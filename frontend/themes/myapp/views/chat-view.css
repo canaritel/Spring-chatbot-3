@@ -1,0 +1,74 @@
+@media screen and (max-width: 740px) {
+    .chat-view {
+        flex-direction: column-reverse;
+    }
+    .chat-view aside {
+        width: 100% !important;
+        flex-direction: row;
+    }
+    .chat-view aside header {
+        display: none;
+    }
+    .chat-view aside vaadin-tabs {
+        flex: 1 1 auto;
+        overflow: auto;
+    }
+    .chat-view aside vaadin-tabs vaadin-tab.justify-between {
+        justify-content: flex-start;
+    }
+}
+
+
+/********* CSS PARA LOS CHAT ***********/
+
+vaadin-message[theme~="chat-view-bubble-bot"] {
+    background-color: #DFF7EC;
+    color: darkslategray;
+    border: 2px solid #fff;
+    border-radius: 9px;
+    font-weight: 500;
+
+    display: inline-flex;
+}
+
+vaadin-message[theme~="chat-view-bubble-bot::before"] {
+    background-color: var(--lumo-contrast);
+    box-shadow: -2px 2px 2px 0 rgba(178, 178, 200, .3);
+    left: -9px;
+}
+
+
+vaadin-message[theme~="chat-view-bubble-bot"]::part(name) {
+    font-weight: 500;
+}
+vaadin-message[theme~="chat-view-bubble-bot"]::part(time) {
+    color: darkslategray;
+}
+vaadin-message[theme~="chat-view-bubble-bot"]::part(name)::after{
+    /*content: " (You)";*/
+}
+
+vaadin-message[theme~="chat-view-bubble-bot"] > vaadin-avatar{
+    border-radius: 5px;
+    box-shadow: 0 0 6px #B2B2B2;
+}
+
+/*
+vaadin-message::part(content) {
+    border-radius: 5px;
+    box-shadow: 0 0 3px #B2B2B2;
+    padding: 3px 5px;
+}
+
+vaadin-message::part(message){
+    text-align: left;
+}
+
+
+
+
+*/
+
+
+
+
