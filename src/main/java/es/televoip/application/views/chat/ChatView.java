@@ -2,6 +2,7 @@ package es.televoip.application.views.chat;
 
 import es.televoip.application.views.MainLayout;
 import com.vaadin.flow.component.AttachEvent;
+import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.html.Aside;
 import com.vaadin.flow.component.html.H3;
@@ -11,7 +12,6 @@ import com.vaadin.flow.component.messages.MessageInput;
 import com.vaadin.flow.component.messages.MessageList;
 import com.vaadin.flow.component.messages.MessageListItem;
 import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.page.Page;
@@ -19,8 +19,10 @@ import com.vaadin.flow.component.tabs.Tabs;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.VaadinSession;
+import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.shared.communication.PushMode;
 import com.vaadin.flow.theme.lumo.LumoUtility;
+import es.televoip.application.chat.Broadcaster;
 import es.televoip.application.chat.ChatInfo;
 import es.televoip.application.chat.ChatList;
 import es.televoip.application.chat.ChatTab;
@@ -37,16 +39,21 @@ import java.util.Map;
 public class ChatView extends HorizontalLayout {
 
    private final ChatService chatService;
-   private final UI ui;
+   private UI ui;
    private final Tabs tabs;
    private final MessageList messageGlobalList;
    private final Map<String, MessageList> chatsMap = new HashMap<>();
    private Integer contador = 0;
    private ChatInfo selectedChat;
 
+   Registration broadcasterRegistration; // Recibir transmisiones Broadcaster
+
+   Notification messages;
+
    public ChatView(ChatService chatService) {
       this.chatService = chatService;
       this.ui = UI.getCurrent();
+      ui.getPushConfiguration().setPushMode(PushMode.AUTOMATIC);
 
       addClassNames("chat-view",
              LumoUtility.Width.FULL,
@@ -68,9 +75,9 @@ public class ChatView extends HorizontalLayout {
       List<ChatInfo> allChats = chatList.getAllChats();
 
       for (ChatInfo chat : allChats) {
-         MessageList messageList = new MessageList();
-         messageList.setSizeFull();
-         chatsMap.put(chat.getName(), messageList);
+         MessageList localmessageList = new MessageList();
+         localmessageList.setSizeFull();
+         chatsMap.put(chat.getName(), localmessageList);
          if (currentChat != chat) {
             chat.incrementUnread();
          }
@@ -89,6 +96,7 @@ public class ChatView extends HorizontalLayout {
          ChatTab selectedTab = (ChatTab) event.getSelectedTab();
          selectedChat = selectedTab.getChatInfo();
          selectedChat.resetUnread();
+
          loadChats();
       });
 
@@ -192,9 +200,11 @@ public class ChatView extends HorizontalLayout {
             items.add(botMessage);
             messageList.setItems(items);
             messageGlobalList.setItems(items);
-            notification = Notification.show(botMessage.getText(), 3000, Notification.Position.TOP_CENTER);
-            notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            //notification = Notification.show(botMessage.getText(), 3000, Notification.Position.TOP_CENTER);
+            //notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            Broadcaster.broadcast("Enviando mensaje Broadcaster.."); /////////////////////
          });
+
       });
 
       return input;
@@ -246,11 +256,11 @@ public class ChatView extends HorizontalLayout {
 
    private void sendChatToScreen(List<MessageListItem> newMessages) {
       MessageList messageList = chatsMap.get(selectedChat.getName());
-
       //List<MessageListItem> items = new ArrayList<>(messageList.getItems()); // Lo dividimos en 2 funciones
       List<MessageListItem> items = new ArrayList<>();
       //items.addAll(messageList.getItems());  // Anulamos para evitar cargar los chats en memoria
       items.addAll(newMessages);
+
       messageList.setItems(items);
       messageGlobalList.setItems(items);
    }
@@ -261,8 +271,6 @@ public class ChatView extends HorizontalLayout {
 
    @Override
    protected void onAttach(AttachEvent attachEvent) {
-      ui.getPushConfiguration().setPushMode(PushMode.AUTOMATIC);  // envia respuesta
-
       // Hacemos visible el Drawer cuando se accede a la View
       MainLayout.get().setDrawerOpened(true);
 
@@ -272,6 +280,20 @@ public class ChatView extends HorizontalLayout {
 
       // cargamos los chats de la BD
       loadChats();
+
+      UI ui = attachEvent.getUI();
+      broadcasterRegistration = Broadcaster.register(newMessage -> {
+         ui.access(() -> {
+            messages = Notification.show("Recibiendo Broadcaster..", 3000, Notification.Position.TOP_CENTER);
+         });
+         System.out.println("Recibiendo Broadcaster..");
+      });
+   }
+
+   @Override
+   protected void onDetach(DetachEvent detachEvent) {
+      broadcasterRegistration.remove();
+      broadcasterRegistration = null;
    }
 
 }
