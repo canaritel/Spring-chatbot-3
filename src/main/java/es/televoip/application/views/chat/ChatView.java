@@ -202,7 +202,7 @@ public class ChatView extends HorizontalLayout {
             messageGlobalList.setItems(items);
             //notification = Notification.show(botMessage.getText(), 3000, Notification.Position.TOP_CENTER);
             //notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-            Broadcaster.broadcast("Enviando mensaje Broadcaster.."); /////////////////////
+            Broadcaster.broadcast(items); /////////////////////
          });
 
       });
@@ -284,9 +284,11 @@ public class ChatView extends HorizontalLayout {
       UI ui = attachEvent.getUI();
       broadcasterRegistration = Broadcaster.register(newMessage -> {
          ui.access(() -> {
-            messages = Notification.show("Recibiendo Broadcaster..", 3000, Notification.Position.TOP_CENTER);
+            Notification.show("Recibiendo Broadcaster..", 3000, Notification.Position.TOP_CENTER);
+            messageGlobalList.setItems(newMessage);
          });
          System.out.println("Recibiendo Broadcaster..");
+
       });
    }
 
