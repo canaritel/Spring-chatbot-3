@@ -74,24 +74,28 @@ public class MainLayout extends AppLayout {
       return layout;
    }
 
+   // Esta método si debe estar en el MainLayout, permite acceder a componentes llamados fuera del método MainLayout
+   public static MainLayout get() {
+      return (MainLayout) UI.getCurrent().getChildren()
+             .filter(component -> component.getClass() == MainLayout.class)
+             .findFirst().get();
+   }
+
    @Override
    protected void afterNavigation() {
       super.afterNavigation();
       viewTitle.setText(getCurrentPageTitle());
-
-      // Si el atributo "nickname" es null lo enviamos a la vista JoinView. 
+      // Si el atributo "nickname" es null lo enviamos a la vista JoinView.
       if (VaadinSession.getCurrent().getAttribute("nickname") == null) {
-         System.out.println("Es nulo");
+         System.out.println("No hay ninguna sesión activada");
          UI.getCurrent().navigate(JoinView.class);
          toggle.setVisible(false); // Comenzamos con la barra superior invisible
       } else {
-         System.out.println("No es nulo");
-         toggle.setVisible(true); //
+         toggle.setVisible(true);
          nav.remove(joinNavItem);
       }
 
-      System.out.println(getCurrentClassName());
-
+      System.out.println("Nombre de la Clase: " + getCurrentClassName());
    }
 
    private String getCurrentClassName() {
@@ -104,19 +108,12 @@ public class MainLayout extends AppLayout {
 
    private String getCurrentPageTitle() {
       PageTitle title = getContent().getClass().getAnnotation(PageTitle.class);
-      //return title == null ? "" : title.value();
+
       if (title == null) {
          return "";
       } else {
          return title.value();
       }
-   }
-
-   // Esta método si debe estar en el MainLayout, permite acceder a componentes llamados fuera del método MainLayout
-   public static MainLayout get() {
-      return (MainLayout) UI.getCurrent().getChildren()
-             .filter(component -> component.getClass() == MainLayout.class)
-             .findFirst().get();
    }
 
 }

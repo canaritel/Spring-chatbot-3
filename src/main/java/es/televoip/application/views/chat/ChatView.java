@@ -12,6 +12,7 @@ import com.vaadin.flow.component.messages.MessageInput;
 import com.vaadin.flow.component.messages.MessageList;
 import com.vaadin.flow.component.messages.MessageListItem;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.page.Page;
@@ -22,12 +23,14 @@ import com.vaadin.flow.server.VaadinSession;
 import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.shared.communication.PushMode;
 import com.vaadin.flow.theme.lumo.LumoUtility;
+import es.televoip.application.Application;
 import es.televoip.application.chat.Broadcaster;
 import es.televoip.application.chat.ChatInfo;
 import es.televoip.application.chat.ChatList;
 import es.televoip.application.chat.ChatTab;
 import es.televoip.application.model.ChatEntity;
 import es.televoip.application.service.ChatService;
+import jakarta.servlet.ServletContextListener;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,19 +39,18 @@ import java.util.Map;
 
 @PageTitle("Chat2")
 @Route(value = "chat2", layout = MainLayout.class)
-public class ChatView extends HorizontalLayout {
+public class ChatView extends HorizontalLayout implements ServletContextListener {
 
    private final ChatService chatService;
-   private UI ui;
+   private final UI ui;
    private final Tabs tabs;
    private final MessageList messageGlobalList;
    private final Map<String, MessageList> chatsMap = new HashMap<>();
    private Integer contador = 0;
    private ChatInfo selectedChat;
+   private ChatTab selectedTab; // Mantener el tab seleccionado actualmente
 
-   Registration broadcasterRegistration; // Recibir transmisiones Broadcaster
-
-   Notification messages;
+   protected Registration broadcasterRegistration; // Recibir transmisiones Broadcaster
 
    public ChatView(ChatService chatService) {
       this.chatService = chatService;
@@ -93,7 +95,7 @@ public class ChatView extends HorizontalLayout {
       expand(chatContainer);
 
       tabs.addSelectedChangeListener(event -> {
-         ChatTab selectedTab = (ChatTab) event.getSelectedTab();
+         selectedTab = (ChatTab) event.getSelectedTab();
          selectedChat = selectedTab.getChatInfo();
          selectedChat.resetUnread();
 
@@ -195,13 +197,13 @@ public class ChatView extends HorizontalLayout {
                 .build();
 
          ui.access(() -> {
-            Notification notification;
+            Application.selectedChat = selectedChat;
             chatService.saveChat(chatReceiver);
             items.add(botMessage);
             messageList.setItems(items);
             messageGlobalList.setItems(items);
-            //notification = Notification.show(botMessage.getText(), 3000, Notification.Position.TOP_CENTER);
-            //notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+
+            // ***** ENVIAMOS EL BROADCASTER *****
             Broadcaster.broadcast(items); /////////////////////
          });
 
@@ -238,6 +240,7 @@ public class ChatView extends HorizontalLayout {
          newMessage.setUserName(objectSender);
          newMessage.setText(objectText);
          newMessage.setTime(objectTime);
+
          if (objectReceiver == null) {
             newMessage.addThemeNames("chat-view-bubble");
             newMessage.setUserColorIndex(3);
@@ -263,6 +266,8 @@ public class ChatView extends HorizontalLayout {
 
       messageList.setItems(items);
       messageGlobalList.setItems(items);
+
+      System.out.println("Tab seleccionado : " + selectedChat.getName()); ///////////////////////////
    }
 
    private void setMobile(boolean mobile) {
@@ -281,15 +286,32 @@ public class ChatView extends HorizontalLayout {
       // cargamos los chats de la BD
       loadChats();
 
-      UI ui = attachEvent.getUI();
+      // ***** RECIBIMOS EL BROADCASTER *****
       broadcasterRegistration = Broadcaster.register(newMessage -> {
          ui.access(() -> {
-            Notification.show("Recibiendo Broadcaster..", 3000, Notification.Position.TOP_CENTER);
-            messageGlobalList.setItems(newMessage);
-         });
-         System.out.println("Recibiendo Broadcaster..");
+            // Obtenemos el chat seleccionado en ChatView
+            ChatInfo currentSelectedChat = selectedChat;
+            // Obtenemos el chat seleccionado en la clase Application
+            ChatInfo applicationSelectedChat = Application.selectedChat;
 
+            // Comparamos los nombres de los chats seleccionados
+            if (currentSelectedChat != null && applicationSelectedChat != null
+                   && currentSelectedChat.getName().equals(applicationSelectedChat.getName())) {
+               messageGlobalList.setItems(newMessage); // Los chats seleccionados son iguales, actualizamos los mensajes
+            }
+
+            Notification notification;
+            String text = applicationSelectedChat.getName() + ": new text...";
+            notification = Notification.show(text, 3000, Notification.Position.TOP_CENTER);
+            notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+         });
+
+         if (selectedChat != null) {
+            System.out.println("Tab: " + selectedChat.getName());
+            System.out.println("Application.Tab: " + Application.selectedChat.getName());
+         }
       });
+
    }
 
    @Override
