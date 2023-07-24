@@ -49,6 +49,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
    private Integer contador = 0;
    private ChatInfo selectedChat;
    private ChatTab selectedTab; // Mantener el tab seleccionado actualmente
+   static String textChat = "";
 
    protected Registration broadcasterRegistration; // Recibir transmisiones Broadcaster
 
@@ -161,15 +162,15 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
       input.addSubmitListener(userMessage -> {
          String phoneUser = selectedChat.getPhone();
          String nameUser = selectedChat.getName();
-         String text = userMessage.getValue();
+         textChat = userMessage.getValue();
 
-         MessageListItem newMessage = new MessageListItem(text, Instant.now(), nameUser);
+         MessageListItem newMessage = new MessageListItem(textChat, Instant.now(), nameUser);
          newMessage.setUserColorIndex(3);
          newMessage.addThemeNames("chat-view-bubble");
 
          ChatEntity chatEntity = ChatEntity.builder()
                 .phone(phoneUser)
-                .text(text)
+                .text(textChat)
                 .timestamp(newMessage.getTime())
                 .sender(nameUser)
                 .build();
@@ -182,7 +183,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
          messageGlobalList.setItems(items);
 
          contador++;
-         String answer = text + " | ..respuesta" + contador;
+         String answer = textChat + " | ..respuesta" + contador;
          String nickname = VaadinSession.getCurrent().getAttribute("nickname").toString();
          MessageListItem botMessage = new MessageListItem(answer, Instant.now(), nickname);
          botMessage.setUserAbbreviation("Bot");
@@ -301,7 +302,8 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
             }
 
             Notification notification;
-            String text = applicationSelectedChat.getName() + ": new text...";
+            String firstTenCharacters = textChat.substring(0, Math.min(textChat.length(), 20));
+            String text = applicationSelectedChat.getName() + ": " + firstTenCharacters + "...";
             notification = Notification.show(text, 3000, Notification.Position.TOP_CENTER);
             notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
          });
