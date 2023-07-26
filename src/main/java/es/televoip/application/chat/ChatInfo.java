@@ -11,10 +11,11 @@ public class ChatInfo {
    private final String name; // una vez creado no se podrá modificar, es un identificador único
    private String nick; // se usará cuando se hagan modificacione del nombre del usuario
    private final List<MessageListItem> listMessages;
-   private int unread;
+   private Integer unread;
    private Span unreadBadge = new Span("");
 
-   public ChatInfo(String phone, String name, int unread) {
+   //public static final Object lock = new Object();
+   public ChatInfo(String phone, String name, Integer unread) {
       this.phone = phone;
       this.name = name;
       this.listMessages = new ArrayList<>();
@@ -29,22 +30,22 @@ public class ChatInfo {
       return listMessages;
    }
 
-   public void resetUnread() {
+   public synchronized void resetUnread() {
       unread = 0;
       updateBadge();
    }
 
-   public void incrementUnread() {
+   public synchronized void incrementUnread() {
       unread++;
       updateBadge();
    }
 
-   private void updateBadge() {
+   public synchronized void updateBadge() {
       unreadBadge.setText(unread + "");
       unreadBadge.setVisible(unread != 0);
    }
 
-   public void setUnreadBadge(Span unreadBadge) {
+   public synchronized void setUnreadBadge(Span unreadBadge) {
       this.unreadBadge = unreadBadge;
       updateBadge();
    }

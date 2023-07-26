@@ -49,8 +49,10 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
    private Integer contador = 0;
    private ChatInfo selectedChat;
    private ChatTab selectedTab; // Mantener el tab seleccionado actualmente
-   static String textChat = "";
-
+   private ChatList chatList;
+   // Todas las "instancias/sesiones" de ChatView compartirán la misma variable textChat 
+   // y podrán acceder a la última versión del mensaje enviado.
+   private static String textChat = ""; // "static" sino solo se actualizaría en la instancia específica donde se envió el mensaje.
    protected Registration broadcasterRegistration; // Recibir transmisiones Broadcaster
 
    public ChatView(ChatService chatService) {
@@ -73,7 +75,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
              LumoUtility.Flex.SHRINK,
              LumoUtility.Overflow.HIDDEN);
 
-      ChatList chatList = createChatList();
+      chatList = createChatList();
       ChatInfo currentChat = chatList.getChat();
       List<ChatInfo> allChats = chatList.getAllChats();
 
@@ -82,8 +84,9 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
          localmessageList.setSizeFull();
          chatsMap.put(chat.getName(), localmessageList);
          if (currentChat != chat) {
-            chat.incrementUnread();
+            chat.incrementUnread();  ////////////////////////////////////////////////////////////
          }
+
          ChatTab tab = createTab(chat);
          tabs.add(tab);
       }
@@ -102,15 +105,17 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
 
          loadChats();
       });
-
    }
 
    private ChatList createChatList() {
-      ChatList chatList = new ChatList();
-      chatList.addChat(new ChatInfo("0", "inicio-no-coge", 0));
-      chatList.addChat(new ChatInfo("34111", "general", 0));
-      chatList.addChat(new ChatInfo("34222", "support", 0));
-      chatList.addChat(new ChatInfo("34333", "casual", 0));
+      if (chatList == null) {
+         chatList = new ChatList();
+         Integer atomicInt = 0;
+         chatList.addChat(new ChatInfo("0", "inicio-no-coge", atomicInt));
+         chatList.addChat(new ChatInfo("34111", "general", atomicInt));
+         chatList.addChat(new ChatInfo("34222", "support", atomicInt));
+         chatList.addChat(new ChatInfo("34333", "casual", atomicInt));
+      }
       return chatList;
    }
 
@@ -137,7 +142,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
 
       ChatTab currentTab = (ChatTab) tabs.getSelectedTab();
       selectedChat = currentTab.getChatInfo();
-      selectedChat.resetUnread();
+      selectedChat.resetUnread(); ////////////// RESETERO EL CONTADOR DEL TAB SELECCIONADO
 
       MessageInput input = createMessageInput();
 
@@ -197,6 +202,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
                 .receiver(botMessage.getUserName())
                 .build();
 
+         //****************************
          ui.access(() -> {
             Application.selectedChat = selectedChat;
             chatService.saveChat(chatReceiver);
@@ -205,9 +211,9 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
             messageGlobalList.setItems(items);
 
             // ***** ENVIAMOS EL BROADCASTER *****
-            Broadcaster.broadcast(items); /////////////////////
+            Broadcaster.broadcast(items);
          });
-
+         //***********************
       });
 
       return input;
@@ -268,7 +274,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
       messageList.setItems(items);
       messageGlobalList.setItems(items);
 
-      System.out.println("Tab seleccionado : " + selectedChat.getName()); ///////////////////////////
+      System.out.println("Tab seleccionado : " + selectedChat.getName());
    }
 
    private void setMobile(boolean mobile) {
@@ -280,6 +286,9 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
       // Hacemos visible el Drawer cuando se accede a la View
       MainLayout.get().setDrawerOpened(true);
 
+      // Agregar la sesión actual al conjunto de sesiones activas
+      MainLayout.addActiveSession(UI.getCurrent());
+
       Page page = attachEvent.getUI().getPage();
       page.retrieveExtendedClientDetails(details -> setMobile(details.getWindowInnerWidth() < 940));
       page.addBrowserWindowResizeListener(e -> setMobile(e.getWidth() < 945));
@@ -287,39 +296,50 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
       // cargamos los chats de la BD
       loadChats();
 
-      // ***** RECIBIMOS EL BROADCASTER *****
+      // ******** RECIBIMOS EL BROADCASTER ********
       broadcasterRegistration = Broadcaster.register(newMessage -> {
-         ui.access(() -> {
-            // Obtenemos el chat seleccionado en ChatView
-            ChatInfo currentSelectedChat = selectedChat;
-            // Obtenemos el chat seleccionado en la clase Application
-            ChatInfo applicationSelectedChat = Application.selectedChat;
+         if (ui != null) {
+            ui.access(() -> {
+               // Obtenemos el chat seleccionado en ChatView
+               ChatInfo currentSelectedChat = selectedChat;
+               // Obtenemos el chat seleccionado en la clase Application
+               ChatInfo applicationSelectedChat = Application.selectedChat;
 
-            // Comparamos los nombres de los chats seleccionados
-            if (currentSelectedChat != null && applicationSelectedChat != null
-                   && currentSelectedChat.getName().equals(applicationSelectedChat.getName())) {
-               messageGlobalList.setItems(newMessage); // Los chats seleccionados son iguales, actualizamos los mensajes
-            }
+               // Comparamos los nombres de los chats seleccionados para NOTIFICAR solo en los mismos Tab-Chat
+               if (currentSelectedChat != null && applicationSelectedChat != null
+                      && currentSelectedChat.getName().equals(applicationSelectedChat.getName())) {
+                  messageGlobalList.setItems(newMessage); // Si los chats seleccionados son iguales actualizamos los mensajes
+               } else {
+                  // Incrementar contador de mensajes no leídos
+                  List<ChatInfo> allChats = chatList.getAllChats();
+                  for (ChatInfo chat : allChats) {
+                     if (chat.getName().equals(applicationSelectedChat.getName())) {
+                        chat.incrementUnread();  ////////////
+                     }
+                  }
+               }
 
-            Notification notification;
-            String firstTenCharacters = textChat.substring(0, Math.min(textChat.length(), 20));
-            String text = applicationSelectedChat.getName() + ": " + firstTenCharacters + "...";
-            notification = Notification.show(text, 3000, Notification.Position.TOP_CENTER);
-            notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-         });
-
-         if (selectedChat != null) {
-            System.out.println("Tab: " + selectedChat.getName());
-            System.out.println("Application.Tab: " + Application.selectedChat.getName());
+               // Notificamos en todas las sesiones
+               Notification notification;
+               String firstTenCharacters = textChat.substring(0, Math.min(textChat.length(), 20));
+               String text = applicationSelectedChat.getName() + ": " + firstTenCharacters + "...";
+               notification = Notification.show(text, 3000, Notification.Position.TOP_CENTER);
+               notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            });
          }
       });
 
+      System.out.println("Sesiones activas: " + MainLayout.getActiveSession());
+      MainLayout.printAllSession();
    }
 
    @Override
    protected void onDetach(DetachEvent detachEvent) {
       broadcasterRegistration.remove();
       broadcasterRegistration = null;
+
+      // Eliminar la sesión actual del conjunto de sesiones activas
+      MainLayout.removeActiveSession(UI.getCurrent());
    }
 
 }
