@@ -15,8 +15,6 @@ import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.server.VaadinSession;
-import com.vaadin.flow.server.communication.AtmospherePushConnection;
-import com.vaadin.flow.server.communication.PushConnection;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import es.televoip.application.views.chat.ChatView;
 import java.util.HashSet;
@@ -121,33 +119,6 @@ public class MainLayout extends AppLayout {
       } else {
          return title.value();
       }
-   }
-
-   public static void addActiveSession(UI ui) {
-      activeSessions.add(ui);
-   }
-
-   public static void removeActiveSession(UI ui) {
-      activeSessions.remove(ui);
-   }
-
-   public static Integer getActiveSession() {
-      return activeSessions.size();
-   }
-   
-   
-   
-
-   public static void printAllSession() {
-      // Obtiene la instancia actual de VaadinSession
-      VaadinSession vaadinSession = VaadinSession.getCurrent();
-
-// Obtiene el número de conexiones activas
-      int activeConnections = vaadinSession.getUIs().size();
-      
-      System.out.println(activeConnections);
-
-      //activeSessions.forEach(action -> System.out.println(action.getCsrfToken()));
    }
 
 }

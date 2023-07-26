@@ -28,6 +28,7 @@ import es.televoip.application.chat.Broadcaster;
 import es.televoip.application.chat.ChatInfo;
 import es.televoip.application.chat.ChatList;
 import es.televoip.application.chat.ChatTab;
+import es.televoip.application.chat.ServiceListener;
 import es.televoip.application.model.ChatEntity;
 import es.televoip.application.service.ChatService;
 import jakarta.servlet.ServletContextListener;
@@ -36,6 +37,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @PageTitle("Chat2")
 @Route(value = "chat2", layout = MainLayout.class)
@@ -54,6 +57,9 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
    // y podrán acceder a la última versión del mensaje enviado.
    private static String textChat = ""; // "static" sino solo se actualizaría en la instancia específica donde se envió el mensaje.
    protected Registration broadcasterRegistration; // Recibir transmisiones Broadcaster
+
+   @Autowired
+   private ServiceListener serviceListener;
 
    public ChatView(ChatService chatService) {
       this.chatService = chatService;
@@ -204,7 +210,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
 
          //****************************
          ui.access(() -> {
-            Application.selectedChat = selectedChat;
+            Application.selectedChat = selectedChat; // cuando creo un mensaje se guarda el chat de quien lo hizo
             chatService.saveChat(chatReceiver);
             items.add(botMessage);
             messageList.setItems(items);
@@ -286,9 +292,6 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
       // Hacemos visible el Drawer cuando se accede a la View
       MainLayout.get().setDrawerOpened(true);
 
-      // Agregar la sesión actual al conjunto de sesiones activas
-      MainLayout.addActiveSession(UI.getCurrent());
-
       Page page = attachEvent.getUI().getPage();
       page.retrieveExtendedClientDetails(details -> setMobile(details.getWindowInnerWidth() < 940));
       page.addBrowserWindowResizeListener(e -> setMobile(e.getWidth() < 945));
@@ -305,15 +308,15 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
                // Obtenemos el chat seleccionado en la clase Application
                ChatInfo applicationSelectedChat = Application.selectedChat;
 
-               // Comparamos los nombres de los chats seleccionados para NOTIFICAR solo en los mismos Tab-Chat
+               // Comparamos los Phones de los chats seleccionados para NOTIFICAR solo en los mismos Tab-Chat
                if (currentSelectedChat != null && applicationSelectedChat != null
-                      && currentSelectedChat.getName().equals(applicationSelectedChat.getName())) {
+                      && currentSelectedChat.getPhone().equals(applicationSelectedChat.getPhone())) {
                   messageGlobalList.setItems(newMessage); // Si los chats seleccionados son iguales actualizamos los mensajes
                } else {
                   // Incrementar contador de mensajes no leídos
                   List<ChatInfo> allChats = chatList.getAllChats();
                   for (ChatInfo chat : allChats) {
-                     if (chat.getName().equals(applicationSelectedChat.getName())) {
+                     if (chat.getPhone().equals(applicationSelectedChat.getPhone())) {
                         chat.incrementUnread();  ////////////
                      }
                   }
@@ -329,17 +332,15 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
          }
       });
 
-      System.out.println("Sesiones activas: " + MainLayout.getActiveSession());
-      MainLayout.printAllSession();
+      Set<UI> activeUIs = serviceListener.getActiveUIs();
+      System.out.println("Sesiones activas UI Listener: " + activeUIs.size());
+      System.out.println("Nick añadido: " + VaadinSession.getCurrent().getAttribute("nickname").toString());
    }
 
    @Override
    protected void onDetach(DetachEvent detachEvent) {
       broadcasterRegistration.remove();
       broadcasterRegistration = null;
-
-      // Eliminar la sesión actual del conjunto de sesiones activas
-      MainLayout.removeActiveSession(UI.getCurrent());
    }
 
 }

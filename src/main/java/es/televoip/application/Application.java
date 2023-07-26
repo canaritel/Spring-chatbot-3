@@ -17,6 +17,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 @Theme(value = "myapp")
 @Push(PushMode.AUTOMATIC)
+
 public class Application implements AppShellConfigurator {
 
    public static ChatInfo selectedChat; // guardamos el Chat-Tab de la sesión que esté chateando
