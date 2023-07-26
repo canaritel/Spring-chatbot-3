@@ -40,6 +40,10 @@ public class ChatInfo {
       updateBadge();
    }
 
+   public synchronized Integer getUnread() {
+      return unread;
+   }
+
    public synchronized void updateBadge() {
       unreadBadge.setText(unread + "");
       unreadBadge.setVisible(unread != 0);
