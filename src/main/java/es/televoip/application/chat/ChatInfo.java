@@ -2,24 +2,33 @@ package es.televoip.application.chat;
 
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.messages.MessageListItem;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import java.util.ArrayList;
 import java.util.List;
 
+@Entity
 public class ChatInfo {
+
+   @Id
+   @GeneratedValue(strategy = GenerationType.IDENTITY)
+   private Long id;
 
    private final String phone; // identificador único
    private final String name; // una vez creado no se podrá modificar, es un identificador único
-   private String nick; // se usará cuando se hagan modificacione del nombre del usuario
+   private String nick; // nick del acceso a  la sesión
    private final List<MessageListItem> listMessages;
    private Integer unread;
    private Span unreadBadge = new Span("");
 
-   //public static final Object lock = new Object();
-   public ChatInfo(String phone, String name, Integer unread) {
+   public ChatInfo(String phone, String name, Integer unread, String nick) {
       this.phone = phone;
       this.name = name;
       this.listMessages = new ArrayList<>();
       this.unread = unread;
+      this.nick = nick;
    }
 
    public String getName() {

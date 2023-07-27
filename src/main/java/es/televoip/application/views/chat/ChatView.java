@@ -3,9 +3,6 @@ package es.televoip.application.views.chat;
 import es.televoip.application.views.MainLayout;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.DetachEvent;
-import com.vaadin.flow.component.Html;
-import com.vaadin.flow.component.HtmlComponent;
-import com.vaadin.flow.component.Text;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.html.Aside;
 import com.vaadin.flow.component.html.Div;
@@ -51,6 +48,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 @Route(value = "chat2", layout = MainLayout.class)
 public class ChatView extends HorizontalLayout implements ServletContextListener {
 
+   @Autowired
+   private ServiceListener serviceListener;
+
    private final ChatService chatService;
    private final UI ui;
    private Tabs tabs;
@@ -60,16 +60,13 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
    private ChatInfo selectedChat;
    private ChatTab selectedTab; // Mantener el tab seleccionado actualmente
    private ChatList chatList;
+   private List<ChatInfo> allChats;
    // Todas las "instancias/sesiones" de ChatView compartirán la misma variable textChat 
    // y podrán acceder a la última versión del mensaje enviado.
    private static String textChat = ""; // "static" sino solo se actualizaría en la instancia específica donde se envió el mensaje.
    protected Registration broadcasterRegistration; // Recibir transmisiones Broadcaster
-
    private Notification notificationShown = new Notification();
    private boolean isNotificationShown = false;
-
-   @Autowired
-   private ServiceListener serviceListener;
 
    public ChatView(ChatService chatService) {
       this.chatService = chatService;
@@ -93,17 +90,12 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
              LumoUtility.Overflow.HIDDEN);
 
       chatList = createChatList();
-      ChatInfo currentChat = chatList.getChat();
-      List<ChatInfo> allChats = chatList.getAllChats();
+      allChats = chatList.getAllChats();
 
       for (ChatInfo chat : allChats) {
          MessageList localmessageList = new MessageList();
          localmessageList.setSizeFull();
-         chatsMap.put(chat.getName(), localmessageList);
-         if (currentChat != chat) {
-            chat.incrementUnread();  ////////////////////////////////////////////////////////////
-         }
-
+         chatsMap.put(chat.getPhone(), localmessageList);
          ChatTab tab = createTab(chat);
          tabs.add(tab);
       }
@@ -125,26 +117,53 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
             loadChats();
 
             Application.selectedChat = selectedChat; // guardamos el Chat seleccionado
+
+            tabs.getChildren().forEach(component -> { // Itera sobre los componentes hijos para acceder a cada objeto Tab
+               // La palabra 'instanceof' es un operador que verifica si el objeto en cuestión es de un cierto tipo,
+               // en este caso, si el componente es un ChatTab.
+               if (component instanceof ChatTab) { // verifica si el componente actual es una instancia de ChatTab
+                  ChatTab tab = (ChatTab) component;
+                  tab.setVisibleEditButton(false); // hacemos todos invisibles para luego..
+               }
+            });
+            selectedTab.setVisibleEditButton(true); // ..activar el botón del tab seleccionado
          }
       });
    }
 
+   private ChatList createChatList() {
+      if (chatList == null) {
+         chatList = new ChatList();
+         String nickname = VaadinSession.getCurrent().getAttribute("nickname").toString();
+         Integer unreadMessage = 0;
+         chatList.addChat(new ChatInfo("34111", "uno", unreadMessage, nickname));
+         chatList.addChat(new ChatInfo("34222", "dos", unreadMessage, nickname));
+         chatList.addChat(new ChatInfo("34333", "tres", unreadMessage, nickname));
+         chatList.addChat(new ChatInfo("34444", "cuatro", unreadMessage, nickname));
+         chatList.addChat(new ChatInfo("34555", "cinco", unreadMessage, nickname));
+      }
+
+      return chatList;
+   }
+
    private ChatTab createTab(ChatInfo chat) {
+
       ChatTab tab = new ChatTab(chat);
       tab.addClassNames(LumoUtility.JustifyContent.BETWEEN);
 
       Span badge = new Span();
       chat.setUnreadBadge(badge);
       badge.getElement().getThemeList().add("badge small contrast");
-      tab.add(new Span("#" + chat.getName()), badge);
+      //tab.add(new Span("#" + chat.getName() + "(" + chat.getPhone() + ")"), badge);
+      tab.add(badge); // se realiza desde la clase ChatTab
 
       return tab;
    }
 
    private void sortTabsByUnread() {
       List<ChatTab> tabList = new ArrayList<>();
-      tabs.getChildren().forEach(component -> {
-         if (component instanceof ChatTab) {
+      tabs.getChildren().forEach(component -> { // Itera sobre los componentes hijos para acceder a cada objeto
+         if (component instanceof ChatTab) { // verifica si el objeto en cuestión es de un cierto tipo
             tabList.add((ChatTab) component);
          }
       });
@@ -159,21 +178,6 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
 
       // Agregamos los tabs ordenados al contenedor
       sortedTabs.forEach(tab -> tabs.add(tab));
-   }
-
-   private ChatList createChatList() {
-      if (chatList == null) {
-         chatList = new ChatList();
-         Integer atomicInt = 0;
-         chatList.addChat(new ChatInfo("0", "inicio-no-coge", atomicInt));
-         chatList.addChat(new ChatInfo("34111", "uno", atomicInt));
-         chatList.addChat(new ChatInfo("34222", "dos", atomicInt));
-         chatList.addChat(new ChatInfo("34333", "tres", atomicInt));
-         chatList.addChat(new ChatInfo("34444", "cuatro", atomicInt));
-         chatList.addChat(new ChatInfo("34555", "cinco", atomicInt));
-      }
-
-      return chatList;
    }
 
    private Aside createAside() {
@@ -197,11 +201,6 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
       channels.addClassNames(LumoUtility.Flex.GROW,
              LumoUtility.Margin.NONE);
 
-      //  ChatTab currentTab = (ChatTab) tabs.getSelectedTab();
-      //    if (tabs.getSelectedTab() != null) {
-      //    selectedChat = currentTab.getChatInfo();
-      //    selectedChat.resetUnread(); ////////////// RESETERO EL CONTADOR DEL TAB SELECCIONADO
-      //    }
       MessageInput input = createMessageInput();
 
       header.add(channels);
@@ -239,7 +238,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
                 .build();
          chatService.saveChat(chatEntity);
 
-         MessageList messageList = chatsMap.get(selectedChat.getName());
+         MessageList messageList = chatsMap.get(selectedChat.getPhone());
          List<MessageListItem> items = new ArrayList<>(messageList.getItems());
          items.add(newMessage);
          messageList.setItems(items);
@@ -260,16 +259,16 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
                 .receiver(botMessage.getUserName())
                 .build();
 
-        // ui.access(() -> {
-            Application.selectedChat = selectedChat; // cuando creo un mensaje se guarda el chat de quien lo hizo
-            chatService.saveChat(chatReceiver);
-            items.add(botMessage);
-            messageList.setItems(items);
-            messageGlobalList.setItems(items);
+         // ui.access(() -> {
+         Application.selectedChat = selectedChat; // cuando creo un mensaje se guarda el chat de quien lo hizo
+         chatService.saveChat(chatReceiver);
+         items.add(botMessage);
+         messageList.setItems(items);
+         messageGlobalList.setItems(items);
 
-            // ***** ENVIAMOS EL BROADCASTER *****
-            Broadcaster.broadcast(items);
-        // });
+         // ***** ENVIAMOS EL BROADCASTER *****
+         Broadcaster.broadcast(items);
+         // });
          //***************************************
       });
 
@@ -310,9 +309,8 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
    }
 
    private void sendChatToScreen(List<MessageListItem> newMessages) {
-      MessageList messageList = chatsMap.get(selectedChat.getName());
+      MessageList messageList = chatsMap.get(selectedChat.getPhone());
       List<MessageListItem> items = new ArrayList<>();
-      //items.addAll(messageList.getItems());  // Anulamos para evitar cargar los chats en memoria
       items.addAll(newMessages);
 
       messageList.setItems(items);
@@ -325,36 +323,49 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
       tabs.setOrientation(mobile ? Tabs.Orientation.HORIZONTAL : Tabs.Orientation.VERTICAL);
    }
 
+   private void setMobileIconSize(Icon icon, boolean isMobile) {
+      if (isMobile) {
+         icon.addClassNames(LumoUtility.IconSize.LARGE);
+      } else {
+         icon.addClassNames(LumoUtility.IconSize.MEDIUM);
+      }
+   }
+
    @Override
    protected void onAttach(AttachEvent attachEvent) {
       // Hacemos visible el Drawer cuando se accede a la View
       MainLayout.get().setDrawerOpened(true);
 
       Page page = attachEvent.getUI().getPage();
-      page.retrieveExtendedClientDetails(details -> setMobile(details.getWindowInnerWidth() < 940));
       page.addBrowserWindowResizeListener(e -> setMobile(e.getWidth() < 945));
+      page.retrieveExtendedClientDetails(details -> {
+         setMobile(details.getWindowInnerWidth() < 940);
+      });
 
       if (!isNotificationShown && tabs.getSelectedTab() == null) {
          // Mostrar la notificación solo si no se ha mostrado antes y no hay un Tab seleccionado
          notificationShown.addThemeVariants(NotificationVariant.LUMO_WARNING);
 
-         Div text = new Div(
-                new Text("Pulse sobre algún "),
-                new Html("<b>usuario</b>"),
-                new Text(" de la lista."),
-                new HtmlComponent("br"),
-                new Text("Esta ventana se cerrará automaticamente.")
-         );
-
+         // Crear los componentes de texto y estilo
          Icon icon = VaadinIcon.ARROW_CIRCLE_UP.create();
+         // Verificar si es resolución móvil
+         page.retrieveExtendedClientDetails(details -> setMobileIconSize(icon, details.getWindowInnerWidth() < 940));
+         Span text1 = new Span("Selecciona algún ");
+         Span boldSpan = new Span("CHAT");
+         boldSpan.getStyle().set("font-weight", "bold");
+         Span text2 = new Span(" de la lista de usuarios");
+
+         // Crear el Div y agregar los componentes de texto
+         Div text = new Div(text1, boldSpan, text2);
+         text.addClassNames(LumoUtility.FontSize.LARGE);
+
          HorizontalLayout layout = new HorizontalLayout(icon, text);
          layout.setAlignItems(Alignment.CENTER);
 
          notificationShown.add(layout);
          notificationShown.open();
          notificationShown.setPosition(Notification.Position.MIDDLE);
-
-         isNotificationShown = true; // Marcar la notificación como mostrada
+         isNotificationShown = true; // marcar la notificación como mostrada
       }
 
       // ******************* RECIBIMOS EL BROADCASTER *******************
@@ -376,8 +387,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
                         chat.incrementUnread();  // incrementamos en 1 el chat no leido 
                      }
                   }
-
-                  sortTabsByUnread(); // Ordenar los tabs por cantidad de mensajes no leídos
+                  sortTabsByUnread(); // Ordenamos los tabs por cantidad de mensajes no leídos
                }
 
                // Notificamos en todas las sesiones
