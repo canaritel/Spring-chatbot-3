@@ -134,6 +134,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
    private ChatList createChatList() {
       if (chatList == null) {
          chatList = new ChatList();
+         // CREAR ALGO PARA CUANDO SEA NULL CERRAR LA SESIÓN Y OBLIGAR VAYA A LOGEO!!!!!!!!
          String nickname = VaadinSession.getCurrent().getAttribute("nickname").toString();
          Integer unreadMessage = 0;
          chatList.addChat(new ChatInfo("34111", "uno", unreadMessage, nickname));
@@ -379,6 +380,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
                if (currentSelectedChat != null && applicationSelectedChat != null
                       && currentSelectedChat.getPhone().equals(applicationSelectedChat.getPhone())) {
                   messageGlobalList.setItems(newMessage); // Si los chats seleccionados son iguales actualizamos los mensajes
+
                } else {
                   // Incrementar contador de mensajes no leídos
                   List<ChatInfo> allChats = chatList.getAllChats();
@@ -400,8 +402,26 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
             );
          }
       });
-      // ****************** FIN BROADCASTER ***************************
 
+      
+      // Nuevo Broadcaster para el cambio de nick
+      broadcasterRegistration = Broadcaster.registerNickChange(newNick -> {
+         if (ui != null) {
+            ChatInfo currentSelectedChat = selectedChat; // Obtenemos el chat seleccionado en la sesión activa
+            ChatInfo applicationSelectedChat = Application.selectedChat; // Obtenemos el chat seleccionado del que envía
+
+            ui.access(() -> {
+               // Actualizamos el nick del ChatTab correspondiente si el usuario lo cambió
+               if (currentSelectedChat != null && applicationSelectedChat != null
+                      && currentSelectedChat.getPhone().equals(applicationSelectedChat.getPhone())) {
+                  selectedTab.setNickUser(newNick);
+                  selectedTab.updateTabContent();
+               }
+            });
+         }
+      });
+       
+      // ****************** FIN BROADCASTER ***************************
       Set<UI> activeUIs = serviceListener.getActiveUIs();
       System.out.println("Sesiones activas UI Listener: " + activeUIs.size());
       System.out.println("Nick añadido: " + VaadinSession.getCurrent().getAttribute("nickname").toString());

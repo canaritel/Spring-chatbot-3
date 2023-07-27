@@ -17,7 +17,7 @@ public class ChatInfo {
    private Long id;
 
    private final String phone; // identificador único
-   private final String name; // una vez creado no se podrá modificar, es un identificador único
+   private String name; // una vez creado no se podrá modificar, es un identificador único
    private String nick; // nick del acceso a  la sesión
    private final List<MessageListItem> listMessages;
    private Integer unread;
@@ -33,6 +33,10 @@ public class ChatInfo {
 
    public String getName() {
       return name;
+   }
+
+   public void setName(String name) {
+      this.name = name;
    }
 
    public List<MessageListItem> getMessages() {
