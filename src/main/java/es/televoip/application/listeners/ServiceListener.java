@@ -1,4 +1,4 @@
-package es.televoip.application.chat;
+package es.televoip.application.listeners;
 
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.server.ServiceInitEvent;

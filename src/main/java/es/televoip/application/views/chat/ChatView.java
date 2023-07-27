@@ -30,11 +30,11 @@ import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.shared.communication.PushMode;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import es.televoip.application.Application;
-import es.televoip.application.chat.Broadcaster;
+import es.televoip.application.broadcast.Broadcaster;
 import es.televoip.application.chat.ChatInfo;
 import es.televoip.application.chat.ChatList;
 import es.televoip.application.chat.ChatTab;
-import es.televoip.application.chat.ServiceListener;
+import es.televoip.application.listeners.ServiceListener;
 import es.televoip.application.model.ChatEntity;
 import es.televoip.application.service.ChatService;
 import jakarta.servlet.ServletContextListener;
@@ -117,7 +117,6 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
 
       tabs.addSelectedChangeListener(event -> {
          selectedTab = (ChatTab) event.getSelectedTab();
-
          if (selectedTab != null) {
             selectedChat = selectedTab.getChatInfo();
             selectedChat.resetUnread();
@@ -125,7 +124,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
             notificationShown.close();
             loadChats();
 
-            Application.selectedChat = selectedChat;
+            Application.selectedChat = selectedChat; // guardamos el Chat seleccionado
          }
       });
    }
@@ -261,8 +260,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
                 .receiver(botMessage.getUserName())
                 .build();
 
-         //****************************
-         ui.accessSynchronously(() -> {
+        // ui.access(() -> {
             Application.selectedChat = selectedChat; // cuando creo un mensaje se guarda el chat de quien lo hizo
             chatService.saveChat(chatReceiver);
             items.add(botMessage);
@@ -271,7 +269,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
 
             // ***** ENVIAMOS EL BROADCASTER *****
             Broadcaster.broadcast(items);
-         });
+        // });
          //***************************************
       });
 
@@ -313,7 +311,6 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
 
    private void sendChatToScreen(List<MessageListItem> newMessages) {
       MessageList messageList = chatsMap.get(selectedChat.getName());
-      //List<MessageListItem> items = new ArrayList<>(messageList.getItems()); // Lo dividimos en 2 funciones
       List<MessageListItem> items = new ArrayList<>();
       //items.addAll(messageList.getItems());  // Anulamos para evitar cargar los chats en memoria
       items.addAll(newMessages);
@@ -360,33 +357,27 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
          isNotificationShown = true; // Marcar la notificación como mostrada
       }
 
-      // cargamos los chats de la BD
-      //loadChats();
-      // ******** RECIBIMOS EL BROADCASTER ********
+      // ******************* RECIBIMOS EL BROADCASTER *******************
       broadcasterRegistration = Broadcaster.register(newMessage -> {
          if (ui != null) {
+            ChatInfo currentSelectedChat = selectedChat; // Obtenemos el chat seleccionado en la sesión activa
+            ChatInfo applicationSelectedChat = Application.selectedChat; // Obtenemos el chat seleccionado del que envía
 
-            // Obtenemos el chat seleccionado en ChatView
-            ChatInfo currentSelectedChat = selectedChat;
-            // Obtenemos el chat seleccionado en la clase Application
-            ChatInfo applicationSelectedChat = Application.selectedChat;
-
-            ui.accessSynchronously(() -> {
-               // Comparamos los Phones de los chats seleccionados para NOTIFICAR solo en los mismos Tab-Chat
+            ui.access(() -> {
+               // Comparamos los phones de los chats seleccionados para NOTIFICAR solo en los mismos Tab-Chat
                if (currentSelectedChat != null && applicationSelectedChat != null
                       && currentSelectedChat.getPhone().equals(applicationSelectedChat.getPhone())) {
                   messageGlobalList.setItems(newMessage); // Si los chats seleccionados son iguales actualizamos los mensajes
                } else {
-
                   // Incrementar contador de mensajes no leídos
                   List<ChatInfo> allChats = chatList.getAllChats();
                   for (ChatInfo chat : allChats) {
                      if (chat.getPhone().equals(applicationSelectedChat.getPhone())) {
-                        chat.incrementUnread();  ////////////
+                        chat.incrementUnread();  // incrementamos en 1 el chat no leido 
                      }
                   }
-                  // Ordenar los tabs por cantidad de mensajes no leídos
-                  sortTabsByUnread();
+
+                  sortTabsByUnread(); // Ordenar los tabs por cantidad de mensajes no leídos
                }
 
                // Notificamos en todas las sesiones
@@ -399,6 +390,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
             );
          }
       });
+      // ****************** FIN BROADCASTER ***************************
 
       Set<UI> activeUIs = serviceListener.getActiveUIs();
       System.out.println("Sesiones activas UI Listener: " + activeUIs.size());

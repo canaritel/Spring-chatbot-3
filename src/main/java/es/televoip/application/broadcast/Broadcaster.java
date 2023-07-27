@@ -1,4 +1,4 @@
-package es.televoip.application.chat;
+package es.televoip.application.broadcast;
 
 import com.vaadin.flow.component.messages.MessageListItem;
 import com.vaadin.flow.shared.Registration;
