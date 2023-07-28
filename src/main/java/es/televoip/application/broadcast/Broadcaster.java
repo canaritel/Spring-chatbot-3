@@ -1,7 +1,6 @@
 package es.televoip.application.broadcast;
 
 import com.vaadin.flow.component.messages.MessageListItem;
-import com.vaadin.flow.server.VaadinSession;
 import com.vaadin.flow.shared.Registration;
 import java.util.LinkedList;
 import java.util.List;
@@ -27,6 +26,12 @@ public class Broadcaster {
       };
    }
 
+   public static synchronized void broadcast(List<MessageListItem> message) {
+      for (Consumer<List<MessageListItem>> listener : listeners) {
+         executor.execute(() -> listener.accept(message));
+      }
+   }
+
    // Nuevo método para enviar el cambio de nick
    public static synchronized Registration registerNickChange(Consumer<String> listener) {
       listenersNickChange.add(listener);
@@ -38,23 +43,11 @@ public class Broadcaster {
       };
    }
 
-   public static synchronized void broadcast(List<MessageListItem> message) {
-      for (Consumer<List<MessageListItem>> listener : listeners) {
-         executor.execute(() -> listener.accept(message));
-      }
-   }
-
    // Nuevo método para enviar el cambio de nick
    public static synchronized void broadcastNickChange(String newNick) {
-//      for (Consumer<String> listener : listenersNickChange) {
-//         executor.execute(() -> listener.accept(newNick));
-//      }
-      VaadinSession.getCurrent().getUIs().forEach(ui -> {
-         ui.access(() -> {
-            listenersNickChange.forEach(listener -> listener.accept(newNick));
-         });
-      });
-
+      for (Consumer<String> listener : listenersNickChange) {
+         executor.execute(() -> listener.accept(newNick));
+      }
    }
 
 }

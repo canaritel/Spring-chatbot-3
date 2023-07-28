@@ -48,23 +48,6 @@ public class ChatTab extends Tab implements Comparable<ChatTab> {
       this.nickUser = nickUser;
    }
 
-   public void updateTabContent() {
-      // Actualizamos el contenido del Tab con el nuevo nick
-      HorizontalLayout contentLayout = new HorizontalLayout();
-      if (this.nickUser.isBlank()) {
-         contentLayout.add(new Span("#" + chatInfo.getName()), editButton);
-      } else {
-         contentLayout.add(new Span(nickUser), editButton);
-      }
-      contentLayout.setPadding(false);
-      contentLayout.setMargin(false);
-      contentLayout.setSpacing(false);
-      contentLayout.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
-
-      removeAll();
-      add(contentLayout);
-   }
-
    private void showEditDialog() {
       Dialog editDialog = new Dialog();
       editDialog.setCloseOnEsc(true);
@@ -90,6 +73,23 @@ public class ChatTab extends Tab implements Comparable<ChatTab> {
       // Agregamos los componentes al diálogo
       editDialog.add(nickInput, saveButton);
       editDialog.open();
+   }
+
+   public void updateTabContent() {
+      // Actualizamos el contenido del Tab con el nuevo nick
+      HorizontalLayout contentLayout = new HorizontalLayout();
+      if (this.nickUser.isBlank()) {
+         contentLayout.add(new Span("#" + chatInfo.getName()), editButton);
+      } else {
+         contentLayout.add(new Span(nickUser), editButton);
+      }
+      contentLayout.setPadding(false);
+      contentLayout.setMargin(false);
+      contentLayout.setSpacing(false);
+      contentLayout.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
+
+      removeAll();
+      add(contentLayout);
    }
 
    @Override

@@ -51,22 +51,23 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
    @Autowired
    private ServiceListener serviceListener;
 
+   protected Registration broadcasterRegistration; // Recibir transmisiones Broadcaster
    private final ChatService chatService;
    private final UI ui;
-   private Tabs tabs;
    private final MessageList messageGlobalList;
    private final Map<String, MessageList> chatsMap = new HashMap<>();
+   private Tabs tabs;
    private Integer contador = 0;
    private ChatInfo selectedChat;
    private ChatTab selectedTab; // Mantener el tab seleccionado actualmente
    private ChatList chatList;
    private List<ChatInfo> allChats;
+
+   private Notification notificationShown = new Notification();
+   private boolean isNotificationShown = false;
    // Todas las "instancias/sesiones" de ChatView compartirán la misma variable textChat 
    // y podrán acceder a la última versión del mensaje enviado.
    private static String textChat = ""; // "static" sino solo se actualizaría en la instancia específica donde se envió el mensaje.
-   protected Registration broadcasterRegistration; // Recibir transmisiones Broadcaster
-   private Notification notificationShown = new Notification();
-   private boolean isNotificationShown = false;
 
    public ChatView(ChatService chatService) {
       this.chatService = chatService;
@@ -111,12 +112,10 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
          selectedTab = (ChatTab) event.getSelectedTab();
          if (selectedTab != null) {
             selectedChat = selectedTab.getChatInfo();
-            selectedChat.resetUnread();
-
-            notificationShown.close();
-            loadChats();
-
+            selectedChat.resetUnread(); // ponmeos a 0 los mensajes pendientes de leer
+            notificationShown.close();  // cerramos el Dialog de información
             Application.selectedChat = selectedChat; // guardamos el Chat seleccionado
+            loadChats();
 
             tabs.getChildren().forEach(component -> { // Itera sobre los componentes hijos para acceder a cada objeto Tab
                // La palabra 'instanceof' es un operador que verifica si el objeto en cuestión es de un cierto tipo,
