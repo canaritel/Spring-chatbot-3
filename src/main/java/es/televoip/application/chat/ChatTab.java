@@ -48,6 +48,11 @@ public class ChatTab extends Tab implements Comparable<ChatTab> {
       this.nickUser = nickUser;
    }
 
+//   public void updateNickUser(String nickUser) {
+//      this.nickUser = nickUser;
+//      updateTabContent(); //////////////
+//   }
+
    private void showEditDialog() {
       Dialog editDialog = new Dialog();
       editDialog.setCloseOnEsc(true);
@@ -65,7 +70,7 @@ public class ChatTab extends Tab implements Comparable<ChatTab> {
          editDialog.close();
 
          // Enviamos el nuevo nick a través del Broadcaster
-         Broadcaster.broadcastNickChange(newNick);
+         Broadcaster.broadcastNickChange(chatInfo.getPhone(), newNick);
       });
 
       saveButton.addClickShortcut(Key.ENTER);

@@ -33,8 +33,11 @@ import es.televoip.application.chat.ChatList;
 import es.televoip.application.chat.ChatTab;
 import es.televoip.application.listeners.ServiceListener;
 import es.televoip.application.model.ChatEntity;
+import es.televoip.application.model.UserNickname;
 import es.televoip.application.service.ChatService;
+import es.televoip.application.service.UserNicknameService;
 import es.televoip.application.views.join.JoinView;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.ServletContextListener;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -53,7 +56,8 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
    private ServiceListener serviceListener;
 
    protected Registration broadcasterRegistration; // Recibir transmisiones Broadcaster
-   private final ChatService chatService;
+   private final ChatService chatService;  // Agrega el servicio para la entidad ChatEntity
+   private final UserNicknameService userNicknameService; // Agrega el servicio para la entidad UserNickname
    private final UI ui;
    private final MessageList messageGlobalList;
    private final Map<String, MessageList> chatsMap = new HashMap<>();
@@ -70,8 +74,15 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
    // y podrán acceder a la última versión del mensaje enviado.
    private static String textChat = ""; // "static" sino solo se actualizaría en la instancia específica donde se envió el mensaje.
 
-   public ChatView(ChatService chatService) {
+   //  Se ejecuta después de que se haya creado el bean de la vista y todas sus dependencias se hayan inyectado. 
+   @PostConstruct
+   private void init() {
+      loadUserNicknames(); // Método para cargar los nicknames de los usuarios
+   }
+
+   public ChatView(ChatService chatService, UserNicknameService userNicknameService) {
       this.chatService = chatService;
+      this.userNicknameService = userNicknameService;
       this.ui = UI.getCurrent();
       ui.getPushConfiguration().setPushMode(PushMode.AUTOMATIC);
 
@@ -126,7 +137,8 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
             selectedChat.resetUnread(); // ponmeos a 0 los mensajes pendientes de leer
             notificationShown.close();  // cerramos el Dialog de información
             Application.selectedChat = selectedChat; // guardamos el Chat seleccionado
-            loadChats();
+
+            loadChats(); // cargamos los Chats de la BD
 
             tabs.getChildren().forEach(component -> { // Itera sobre los componentes hijos para acceder a cada objeto Tab
                // La palabra 'instanceof' es un operador que verifica si el objeto en cuestión es de un cierto tipo,
@@ -144,13 +156,12 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
    private ChatList createChatList() {
       if (chatList == null) {
          chatList = new ChatList();
-         String nickname = VaadinSession.getCurrent().getAttribute("nickname").toString();
          Integer unreadMessage = 0;
-         chatList.addChat(new ChatInfo("34111", "uno", unreadMessage, nickname));
-         chatList.addChat(new ChatInfo("34222", "dos", unreadMessage, nickname));
-         chatList.addChat(new ChatInfo("34333", "tres", unreadMessage, nickname));
-         chatList.addChat(new ChatInfo("34444", "cuatro", unreadMessage, nickname));
-         chatList.addChat(new ChatInfo("34555", "cinco", unreadMessage, nickname));
+         chatList.addChat(new ChatInfo("34111", "uno", unreadMessage));
+         chatList.addChat(new ChatInfo("34222", "dos", unreadMessage));
+         chatList.addChat(new ChatInfo("34333", "tres", unreadMessage));
+         chatList.addChat(new ChatInfo("34444", "cuatro", unreadMessage));
+         chatList.addChat(new ChatInfo("34555", "cinco", unreadMessage));
       }
 
       return chatList;
@@ -308,6 +319,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
    private void loadChats() {
       // Procedemos a cargar de la BD los mensajes por Sender "Emisor"
       List<ChatEntity> chatEntities = chatService.searchBySender(selectedChat.getName());
+      //List<ChatEntity> chatEntities = chatService.searchByPhone(selectedChat.getPhone());
       List<MessageListItem> newMessages = new ArrayList<>();
 
       for (ChatEntity objectChatEntity : chatEntities) {
@@ -319,11 +331,11 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
          String nickUser = objectChatEntity.getNickSender();
          String objectUser = selectedChat.getName();
 
-       
-         if (objectPhone != null && nickUser != null) {
-            loadNickInAllTabs(nickUser, objectPhone);
-         }
          // Recorrer todos los Tab para ponerlo justo en el que es
+//         if (objectPhone != null && nickUser != null) {
+//            loadNickInAllTabs(nickUser, objectPhone);
+//         }
+         
 
          MessageListItem newMessage = new MessageListItem();
          newMessage.setUserName(objectSender);
@@ -441,32 +453,52 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
       });
 
       // Nuevo Broadcaster para el cambio de nickName
-      broadcasterRegistration = Broadcaster.registerNickChange(newNick -> {
+      broadcasterRegistration = Broadcaster.registerNickChange(chageData -> {
          if (ui != null) {
             ui.access(() -> {
-               updateNickInAllTabs(newNick); // actualizamos el nickname
+               System.out.println("LLEGA el broadcast de cambio de nick!!!! " + chageData.getUserPhone()
+                      + " | " + chageData.getNewNick());
+               updateNickInAllTabs2(chageData.getUserPhone(), chageData.getNewNick()); // actualizamos el nickname
             });
          }
       });
-
       // ****************** FIN BROADCASTER ***************************
       Set<UI> activeUIs = serviceListener.getActiveUIs();
       System.out.println("Sesiones activas UI Listener: " + activeUIs.size());
       System.out.println("Nick añadido: " + VaadinSession.getCurrent().getAttribute("nickname").toString());
    }
 
-// Nuevo método para actualizar el nick en todas las sesiones
-   public void updateNickInAllTabs(String newNick) {
+   public void updateNickInAllTabs2(String userPhone, String newNick) {
       tabs.getChildren().forEach(component -> {
          if (component instanceof ChatTab) {
             ChatTab tab = (ChatTab) component;
-            String currentNick = tab.getNickUser();
-            if (Application.selectedChat.getName().equals(tab.getChatInfo().getName())) {
+            //String currentNick = tab.getNickUser();
+            if (userPhone.equals(tab.getChatInfo().getPhone())) {
                tab.setNickUser(newNick);
                tab.updateTabContent();
             }
          }
       });
+      saveUserNickname(userPhone, newNick); // Guardar el nickname en la base de datos
+   }
+
+   // Método para cargar los nicknames de los usuarios desde la base de datos y actualizar los tabs
+   private void loadUserNicknames() {
+      List<UserNickname> userNicknames = userNicknameService.searchAll();
+      for (UserNickname userNickname : userNicknames) {
+         String phone = userNickname.getPhone();
+         String nickname = userNickname.getNickname();
+         updateNickInAllTabs2(nickname, phone);
+      }
+   }
+
+   // Método para guardar el nickname del usuario en la base de datos
+   private void saveUserNickname(String phone, String nickname) {
+      System.out.println("--llega al sistema de grabar el NICK!!!!!!!!!!!!!" + phone + " | " + nickname);
+      UserNickname userNickname = new UserNickname();
+      userNickname.setPhone(phone);
+      userNickname.setNickname(nickname);
+      userNicknameService.updateUserNick(userNickname);
    }
 
    @Override

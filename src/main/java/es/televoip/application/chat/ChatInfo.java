@@ -1,14 +1,12 @@
 package es.televoip.application.chat;
 
 import com.vaadin.flow.component.html.Span;
-import com.vaadin.flow.component.messages.MessageListItem;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import java.util.ArrayList;
-import java.util.List;
+import jakarta.persistence.Transient;
 
 @Entity
 public class ChatInfo {
@@ -17,22 +15,22 @@ public class ChatInfo {
    @GeneratedValue(strategy = GenerationType.IDENTITY)
    private Long id;
 
+   @Column(unique = true)
    private final String phone; // identificador único
+
+   @Transient // este campo no se grabará en la BD
    private String name; // una vez creado no se podrá modificar, es un identificador único
-   private String nick; // nick del acceso a  la sesión
-   private final List<MessageListItem> listMessages;
 
    @Column(nullable = false) // Asegura que el campo no sea nulo en la base de datos
    private Integer unread;
 
+   @Transient // este campo no se grabará en la BD
    private Span unreadBadge = new Span("");
 
-   public ChatInfo(String phone, String name, Integer unread, String nick) {
+   public ChatInfo(String phone, String name, Integer unread) {
       this.phone = phone;
       this.name = name;
-      this.listMessages = new ArrayList<>();
       this.unread = unread;
-      this.nick = nick;
    }
 
    public String getName() {
@@ -41,10 +39,6 @@ public class ChatInfo {
 
    public void setName(String name) {
       this.name = name;
-   }
-
-   public List<MessageListItem> getMessages() {
-      return listMessages;
    }
 
    public synchronized void resetUnread() {
@@ -78,14 +72,6 @@ public class ChatInfo {
 
    public String getCollaborationTopic() {
       return "chat/" + name;
-   }
-
-   public String getNick() {
-      return nick;
-   }
-
-   public void setNick(String nick) {
-      this.nick = nick;
    }
 
    public String getPhone() {

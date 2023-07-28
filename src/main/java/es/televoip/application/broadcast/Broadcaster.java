@@ -14,7 +14,7 @@ public class Broadcaster {
 
    static LinkedList<Consumer<List<MessageListItem>>> listeners = new LinkedList<>();
 
-   static LinkedList<Consumer<String>> listenersNickChange = new LinkedList<>();
+   static LinkedList<Consumer<NickChangeData>> listenersNickChange = new LinkedList<>();
 
    public static synchronized Registration register(Consumer<List<MessageListItem>> listener) {
       listeners.add(listener);
@@ -33,7 +33,7 @@ public class Broadcaster {
    }
 
    // Nuevo método para enviar el cambio de nick
-   public static synchronized Registration registerNickChange(Consumer<String> listener) {
+   public static synchronized Registration registerNickChange(Consumer<NickChangeData> listener) {
       listenersNickChange.add(listener);
 
       return () -> {
@@ -44,9 +44,16 @@ public class Broadcaster {
    }
 
    // Nuevo método para enviar el cambio de nick
-   public static synchronized void broadcastNickChange(String newNick) {
-      for (Consumer<String> listener : listenersNickChange) {
-         executor.execute(() -> listener.accept(newNick));
+//   public static synchronized void broadcastNickChange(String newNick) {
+//      for (Consumer<String> listener : listenersNickChange) {
+//         executor.execute(() -> listener.accept(newNick));
+//      }
+//   }
+   // Nuevo método para enviar el cambio de nick con la clase NickChangeData
+   public static synchronized void broadcastNickChange(String userPhone, String newNick) {
+      NickChangeData nickChangeData = new NickChangeData(userPhone, newNick);
+      for (Consumer<NickChangeData> listener : listenersNickChange) {
+         executor.execute(() -> listener.accept(nickChangeData));
       }
    }
 
