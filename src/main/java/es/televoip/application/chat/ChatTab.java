@@ -1,5 +1,6 @@
 package es.televoip.application.chat;
 
+import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Span;
@@ -9,7 +10,7 @@ import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.textfield.TextField;
 import es.televoip.application.broadcast.Broadcaster;
 
-public final class ChatTab extends Tab implements Comparable<ChatTab> {
+public class ChatTab extends Tab implements Comparable<ChatTab> {
 
    private ChatInfo chatInfo;
    private String nickUser;  // Nick para el usuario cuando lo registramos
@@ -79,11 +80,12 @@ public final class ChatTab extends Tab implements Comparable<ChatTab> {
          String newNick = nickInput.getValue();
          setNickUser(newNick);
          editDialog.close();
-         updateTabContent();
 
          // Enviamos el nuevo nick a través del Broadcaster
          Broadcaster.broadcastNickChange(newNick);
       });
+
+      saveButton.addClickShortcut(Key.ENTER);
 
       // Agregamos los componentes al diálogo
       editDialog.add(nickInput, saveButton);

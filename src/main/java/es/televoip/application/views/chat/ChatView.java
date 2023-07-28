@@ -403,28 +403,33 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
          }
       });
 
-      
-      // Nuevo Broadcaster para el cambio de nick
+      // Nuevo Broadcaster para el cambio de nickName
       broadcasterRegistration = Broadcaster.registerNickChange(newNick -> {
          if (ui != null) {
-            ChatInfo currentSelectedChat = selectedChat; // Obtenemos el chat seleccionado en la sesión activa
-            ChatInfo applicationSelectedChat = Application.selectedChat; // Obtenemos el chat seleccionado del que envía
-
             ui.access(() -> {
-               // Actualizamos el nick del ChatTab correspondiente si el usuario lo cambió
-               if (currentSelectedChat != null && applicationSelectedChat != null
-                      && currentSelectedChat.getPhone().equals(applicationSelectedChat.getPhone())) {
-                  selectedTab.setNickUser(newNick);
-                  selectedTab.updateTabContent();
-               }
+               updateNickInAllTabs(newNick); // actualizamos el nickname
             });
          }
       });
-       
+
       // ****************** FIN BROADCASTER ***************************
       Set<UI> activeUIs = serviceListener.getActiveUIs();
       System.out.println("Sesiones activas UI Listener: " + activeUIs.size());
       System.out.println("Nick añadido: " + VaadinSession.getCurrent().getAttribute("nickname").toString());
+   }
+
+// Nuevo método para actualizar el nick en todas las sesiones
+   public void updateNickInAllTabs(String newNick) {
+      tabs.getChildren().forEach(component -> {
+         if (component instanceof ChatTab) {
+            ChatTab tab = (ChatTab) component;
+            String currentNick = tab.getNickUser();
+            if (Application.selectedChat.getName().equals(tab.getChatInfo().getName())) {
+               tab.setNickUser(newNick);
+               tab.updateTabContent();
+            }
+         }
+      });
    }
 
    @Override
