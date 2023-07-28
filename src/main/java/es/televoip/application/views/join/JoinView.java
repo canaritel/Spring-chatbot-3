@@ -45,7 +45,6 @@ public class JoinView extends VerticalLayout {
       } else {
          VaadinSession.getCurrent().setAttribute("nickname", nickname);
          UI.getCurrent().navigate(ChatView.class);
-
       }
    }
 

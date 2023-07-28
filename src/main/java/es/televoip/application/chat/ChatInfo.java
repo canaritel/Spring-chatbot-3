@@ -2,6 +2,7 @@ package es.televoip.application.chat;
 
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.messages.MessageListItem;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -20,7 +21,10 @@ public class ChatInfo {
    private String name; // una vez creado no se podrá modificar, es un identificador único
    private String nick; // nick del acceso a  la sesión
    private final List<MessageListItem> listMessages;
+
+   @Column(nullable = false) // Asegura que el campo no sea nulo en la base de datos
    private Integer unread;
+
    private Span unreadBadge = new Span("");
 
    public ChatInfo(String phone, String name, Integer unread, String nick) {
@@ -55,6 +59,11 @@ public class ChatInfo {
 
    public synchronized Integer getUnread() {
       return unread;
+   }
+
+   public void setUnread(Integer unread) {
+      this.unread = unread;
+      this.updateBadge();
    }
 
    public synchronized void updateBadge() {

@@ -30,6 +30,10 @@ public class ChatEntity {
    private String sender; // nombre del usuario
 
    private String receiver; // nombre del operador
+   
+   private String nickSender;
+   
+   private String nickReceiver;
 
    // Getters y setters (generados automáticamente por @Data)
 }

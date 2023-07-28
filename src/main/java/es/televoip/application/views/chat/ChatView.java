@@ -34,6 +34,7 @@ import es.televoip.application.chat.ChatTab;
 import es.televoip.application.listeners.ServiceListener;
 import es.televoip.application.model.ChatEntity;
 import es.televoip.application.service.ChatService;
+import es.televoip.application.views.join.JoinView;
 import jakarta.servlet.ServletContextListener;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -90,6 +91,16 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
              LumoUtility.Flex.SHRINK,
              LumoUtility.Overflow.HIDDEN);
 
+      //********************** CONTROL DE ERROR POR SESIÓN VACÍA ********************************
+      // Verificar si el atributo "nickname" está presente en la sesión
+      if (VaadinSession.getCurrent().getAttribute("nickname") == null) {
+         // Si no hay un "nickname" en la sesión, redirige a una página de inicio de sesión
+         // o muestra un mensaje de error indicando que la sesión ha caducado.
+         UI.getCurrent().navigate(JoinView.class);
+         //UI.getCurrent().getPage().executeJs("window.location.href = '/join';");
+      }
+      //*****************************************************************************************
+
       chatList = createChatList();
       allChats = chatList.getAllChats();
 
@@ -133,7 +144,6 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
    private ChatList createChatList() {
       if (chatList == null) {
          chatList = new ChatList();
-         // CREAR ALGO PARA CUANDO SEA NULL CERRAR LA SESIÓN Y OBLIGAR VAYA A LOGEO!!!!!!!!
          String nickname = VaadinSession.getCurrent().getAttribute("nickname").toString();
          Integer unreadMessage = 0;
          chatList.addChat(new ChatInfo("34111", "uno", unreadMessage, nickname));
@@ -230,13 +240,15 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
          newMessage.setUserColorIndex(3);
          newMessage.addThemeNames("chat-view-bubble");
 
-         ChatEntity chatEntity = ChatEntity.builder()
+         String userChat = updateNickSender(); // Actualizamos el nombre del Nick antes de grabar
+         ChatEntity chatSender = ChatEntity.builder()
                 .phone(phoneUser)
                 .text(textChat)
                 .timestamp(newMessage.getTime())
                 .sender(nameUser)
+                .nickSender(userChat)
                 .build();
-         chatService.saveChat(chatEntity);
+         chatService.saveChat(chatSender);  // ***** GRABAMOS LOS MENSAJES DEl EMISOR/REMITENTE *****
 
          MessageList messageList = chatsMap.get(selectedChat.getPhone());
          List<MessageListItem> items = new ArrayList<>(messageList.getItems());
@@ -244,7 +256,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
          messageList.setItems(items);
          messageGlobalList.setItems(items);
 
-         contador++;
+         contador++; // añadimos un incremento a un identificador numérico de la respuesta
          String answer = textChat + " | ..respuesta" + contador;
          String nickname = VaadinSession.getCurrent().getAttribute("nickname").toString();
          MessageListItem botMessage = new MessageListItem(answer, Instant.now(), nickname);
@@ -252,30 +264,49 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
          botMessage.setUserColorIndex(2);
          botMessage.addThemeNames("chat-view-bubble-bot");
 
+         userChat = updateNickSender(); // Actualizamos el nombre del Nick antes de grabar
          ChatEntity chatReceiver = ChatEntity.builder()
                 .text(botMessage.getText())
                 .timestamp(botMessage.getTime())
                 .sender(nameUser)
                 .receiver(botMessage.getUserName())
+                .nickSender(userChat)
                 .build();
+         chatService.saveChat(chatReceiver); // ***** GRABAMOS MENSAJES DE LA RESPUESTA *****
 
-         // ui.access(() -> {
          Application.selectedChat = selectedChat; // cuando creo un mensaje se guarda el chat de quien lo hizo
-         chatService.saveChat(chatReceiver);
          items.add(botMessage);
          messageList.setItems(items);
          messageGlobalList.setItems(items);
 
          // ***** ENVIAMOS EL BROADCASTER *****
          Broadcaster.broadcast(items);
-         // });
-         //***************************************
+         //************************************
       });
 
       return input;
    }
 
+   private String updateNickSender() {
+      System.out.println("El sender es " + selectedTab.getNickUser());
+      return selectedTab.getNickUser();
+   }
+
+   public void loadNickInAllTabs(String newNick, String userPhone) {
+      tabs.getChildren().forEach(component -> {
+         if (component instanceof ChatTab) {
+            ChatTab tab = (ChatTab) component;
+            //String currentNick = tab.getNickUser();
+            if (userPhone.equals(tab.getChatInfo().getPhone())) {
+               tab.setNickUser(newNick);
+               tab.updateTabContent();
+            }
+         }
+      });
+   }
+
    private void loadChats() {
+      // Procedemos a cargar de la BD los mensajes por Sender "Emisor"
       List<ChatEntity> chatEntities = chatService.searchBySender(selectedChat.getName());
       List<MessageListItem> newMessages = new ArrayList<>();
 
@@ -285,7 +316,14 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
          Instant objectTime = objectChatEntity.getTimestamp();
          String objectText = objectChatEntity.getText();
          String objectReceiver = objectChatEntity.getReceiver();
+         String nickUser = objectChatEntity.getNickSender();
          String objectUser = selectedChat.getName();
+
+       
+         if (objectPhone != null && nickUser != null) {
+            loadNickInAllTabs(nickUser, objectPhone);
+         }
+         // Recorrer todos los Tab para ponerlo justo en el que es
 
          MessageListItem newMessage = new MessageListItem();
          newMessage.setUserName(objectSender);
@@ -305,10 +343,10 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
          newMessages.add(newMessage);
       }
 
-      sendChatToScreen(newMessages);
+      sendLoadChatToScreen(newMessages);
    }
 
-   private void sendChatToScreen(List<MessageListItem> newMessages) {
+   private void sendLoadChatToScreen(List<MessageListItem> newMessages) {
       MessageList messageList = chatsMap.get(selectedChat.getPhone());
       List<MessageListItem> items = new ArrayList<>();
       items.addAll(newMessages);
@@ -316,7 +354,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
       messageList.setItems(items);
       messageGlobalList.setItems(items);
 
-      System.out.println("Tab seleccionado : " + selectedChat.getName());
+      System.out.println("Mensajes del Tab cargados: " + selectedChat.getName());
    }
 
    private void setMobile(boolean mobile) {

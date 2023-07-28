@@ -17,8 +17,6 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.server.VaadinSession;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import es.televoip.application.views.chat.ChatView;
-import java.util.HashSet;
-import java.util.Set;
 import org.vaadin.lineawesome.LineAwesomeIcon;
 
 /**
@@ -30,9 +28,6 @@ public class MainLayout extends AppLayout {
    private DrawerToggle toggle;
    private SideNav nav;
    private SideNavItem joinNavItem;
-
-   // Set para almacenar las sesiones activas
-   private static Set<UI> activeSessions = new HashSet<>();
 
    public MainLayout() {
       setPrimarySection(Section.DRAWER);
