@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor  // genera un constructor con un parámetro para cada campo en su clase
 @Builder  // se utiliza en clases, constructores y métodos para proporcionarle API de compilador complejas
 @Entity
-public class UserNickname {
+public class UserEntity {
 
    @Id
    @GeneratedValue(strategy = GenerationType.IDENTITY)

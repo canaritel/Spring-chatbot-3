@@ -33,9 +33,9 @@ import es.televoip.application.chat.ChatList;
 import es.televoip.application.chat.ChatTab;
 import es.televoip.application.listeners.ServiceListener;
 import es.televoip.application.model.ChatEntity;
-import es.televoip.application.model.UserNickname;
+import es.televoip.application.model.UserEntity;
 import es.televoip.application.service.ChatService;
-import es.televoip.application.service.UserNicknameService;
+import es.televoip.application.service.UserEntityService;
 import es.televoip.application.views.join.JoinView;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.ServletContextListener;
@@ -57,7 +57,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
 
    protected Registration broadcasterRegistration; // Recibir transmisiones Broadcaster
    private final ChatService chatService;  // Agrega el servicio para la entidad ChatEntity
-   private final UserNicknameService userNicknameService; // Agrega el servicio para la entidad UserNickname
+   private final UserEntityService userService; // Agrega el servicio para la entidad UserNickname
    private final UI ui;
    private final MessageList messageGlobalList;
    private final Map<String, MessageList> chatsMap = new HashMap<>();
@@ -80,9 +80,9 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
       loadUserNicknames(); // Método para cargar los nicknames de los usuarios
    }
 
-   public ChatView(ChatService chatService, UserNicknameService userNicknameService) {
+   public ChatView(ChatService chatService, UserEntityService userService) {
       this.chatService = chatService;
-      this.userNicknameService = userNicknameService;
+      this.userService = userService;
       this.ui = UI.getCurrent();
       ui.getPushConfiguration().setPushMode(PushMode.AUTOMATIC);
 
@@ -484,21 +484,21 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
 
    // Método para cargar los nicknames de los usuarios desde la base de datos y actualizar los tabs
    private void loadUserNicknames() {
-      List<UserNickname> userNicknames = userNicknameService.searchAll();
-      for (UserNickname userNickname : userNicknames) {
-         String phone = userNickname.getPhone();
-         String nickname = userNickname.getNickname();
-         updateNickInAllTabs2(nickname, phone);
+      List<UserEntity> userList = userService.searchAll();
+      for (UserEntity userObject : userList) {
+         String phone = userObject.getPhone();
+         String nickname = userObject.getNickname();
+         updateNickInAllTabs2(phone, nickname);
       }
    }
 
    // Método para guardar el nickname del usuario en la base de datos
    private void saveUserNickname(String phone, String nickname) {
       System.out.println("--llega al sistema de grabar el NICK!!!!!!!!!!!!!" + phone + " | " + nickname);
-      UserNickname userNickname = new UserNickname();
-      userNickname.setPhone(phone);
-      userNickname.setNickname(nickname);
-      userNicknameService.updateUserNick(userNickname);
+      UserEntity userObject = new UserEntity();
+      userObject.setPhone(phone);
+      userObject.setNickname(nickname);
+      userService.updateUserNick(userObject);
    }
 
    @Override
