@@ -38,7 +38,6 @@ import es.televoip.application.service.ChatService;
 import es.televoip.application.service.UserEntityService;
 import es.televoip.application.views.join.JoinView;
 import jakarta.annotation.PostConstruct;
-import jakarta.servlet.ServletContextListener;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -50,7 +49,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 @PageTitle("Chat2")
 @Route(value = "chat2", layout = MainLayout.class)
-public class ChatView extends HorizontalLayout implements ServletContextListener {
+public class ChatView extends HorizontalLayout {//implements ServletContextListener {
 
    @Autowired
    private ServiceListener serviceListener;
@@ -290,11 +289,9 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
          messageList.setItems(items);
          messageGlobalList.setItems(items);
 
-         // ***** ENVIAMOS EL BROADCASTER *****
-         //ui.access(() -> {
+         // ***** ENVIAMOS EL BROADCASTER DE MENSAJES *****
          Broadcaster.broadcast(items);
-         //});
-         //************************************
+         //************************************************
       });
 
       return input;
@@ -376,10 +373,13 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
       }
    }
 
-   @Override
+   // El método 'onAttach' se ejecutará cada vez que se muestre la vista en la interfaz de usuario,
+   // por lo que es un buen lugar para inicializar componentes, cargar datos o realizar otras 
+   // acciones que deban ocurrir cuando la vista esté presente.
+   // Más información: https://vaadin.com/docs/latest/create-ui/creating-components/lifecycle-callbacks
+   @Override // El método 'onAttach' se invoca cuando el Component se ha adjuntado al UI
    protected void onAttach(AttachEvent attachEvent) {
-      // Hacemos visible el Drawer cuando se accede a la View
-      MainLayout.get().setDrawerOpened(true);
+      MainLayout.get().setDrawerOpened(true);  // Hacemos visible el Drawer cuando se accede a la View
 
       Page page = attachEvent.getUI().getPage();
       page.addBrowserWindowResizeListener(e -> setMobile(e.getWidth() < 945));
@@ -413,7 +413,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
          isNotificationShown = true; // marcar la notificación como mostrada
       }
 
-      // ******************* RECIBIMOS EL BROADCASTER *******************
+      // **************** RECIBIMOS BROADCASTER DE MENSAJES ******************
       broadcasterRegistration = Broadcaster.register(newMessage -> {
          if (ui != null) {
             ChatInfo currentSelectedChat = selectedChat; // Obtenemos el chat seleccionado en la sesión activa
@@ -447,7 +447,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
          }
       });
 
-      // ***************** BROADCASTER PARA NICKNAME *****************
+      // ************** RECIMOS BROADCASTER PARA NICKNAME *******************
       broadcasterRegistration = Broadcaster.registerNickChange(chageData -> {
          if (ui != null) {
             ui.access(() -> {
@@ -455,7 +455,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
             });
          }
       });
-      // ****************** FIN BROADCASTER ***************************
+      // ********************** FIN BROADCASTERs ****************************
       Set<UI> activeUIs = serviceListener.getActiveUIs();
       System.out.println("Sesiones activas UI Listener: " + activeUIs.size());
       System.out.println("Sesión Nick añadido: " + VaadinSession.getCurrent().getAttribute("nickname").toString());
@@ -463,20 +463,16 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
 
    public void updateNickInAllTabs(String userPhone, String newNick) {
       Span badge = new Span();
-      //chat.setUnreadBadge(badge);
       badge.getElement().getThemeList().add("badge small contrast");
-      //tab.add(new Span("#" + chat.getName() + "(" + chat.getPhone() + ")"), badge);
-      //tab.add(badge); // se realiza desde la clase ChatTab
 
       tabs.getChildren().forEach(component -> {
          if (component instanceof ChatTab) {
             ChatTab tab = (ChatTab) component;
-            //String currentNick = tab.getNickUser();
-            if (userPhone.equals(tab.getChatInfo().getPhone())) {
-               tab.setNickUser(newNick);
-               tab.getChatInfo().setUnreadBadge(badge); /////////////////
-               tab.updateTabContent();
 
+            if (userPhone.equals(tab.getChatInfo().getPhone())) {
+               tab.setNickUser(newNick); // seteamos el nuevo nickname
+               tab.getChatInfo().setUnreadBadge(badge); // añadimos el nº de chat no leidos
+               tab.updateTabContent();
                tab.add(badge);
             }
          }
@@ -502,6 +498,7 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
       userService.updateUserNick(userObject);
    }
 
+   //  El método 'onDetach' se invoca justo antes de que el componente se separe del UI, ideal para liberar recursos
    @Override
    protected void onDetach(DetachEvent detachEvent) {
       broadcasterRegistration.remove();
