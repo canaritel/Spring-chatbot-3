@@ -291,7 +291,9 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
          messageGlobalList.setItems(items);
 
          // ***** ENVIAMOS EL BROADCASTER *****
+         //ui.access(() -> {
          Broadcaster.broadcast(items);
+         //});
          //************************************
       });
 
@@ -331,12 +333,6 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
          String nickUser = objectChatEntity.getNickSender();
          String objectUser = selectedChat.getName();
 
-         // Recorrer todos los Tab para ponerlo justo en el que es
-//         if (objectPhone != null && nickUser != null) {
-//            loadNickInAllTabs(nickUser, objectPhone);
-//         }
-         
-
          MessageListItem newMessage = new MessageListItem();
          newMessage.setUserName(objectSender);
          newMessage.setText(objectText);
@@ -362,7 +358,6 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
       MessageList messageList = chatsMap.get(selectedChat.getPhone());
       List<MessageListItem> items = new ArrayList<>();
       items.addAll(newMessages);
-
       messageList.setItems(items);
       messageGlobalList.setItems(items);
 
@@ -452,30 +447,37 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
          }
       });
 
-      // Nuevo Broadcaster para el cambio de nickName
+      // ***************** BROADCASTER PARA NICKNAME *****************
       broadcasterRegistration = Broadcaster.registerNickChange(chageData -> {
          if (ui != null) {
             ui.access(() -> {
-               System.out.println("LLEGA el broadcast de cambio de nick!!!! " + chageData.getUserPhone()
-                      + " | " + chageData.getNewNick());
-               updateNickInAllTabs2(chageData.getUserPhone(), chageData.getNewNick()); // actualizamos el nickname
+               updateNickInAllTabs(chageData.getUserPhone(), chageData.getNewNick()); // actualizamos el nickname
             });
          }
       });
       // ****************** FIN BROADCASTER ***************************
       Set<UI> activeUIs = serviceListener.getActiveUIs();
       System.out.println("Sesiones activas UI Listener: " + activeUIs.size());
-      System.out.println("Nick añadido: " + VaadinSession.getCurrent().getAttribute("nickname").toString());
+      System.out.println("Sesión Nick añadido: " + VaadinSession.getCurrent().getAttribute("nickname").toString());
    }
 
-   public void updateNickInAllTabs2(String userPhone, String newNick) {
+   public void updateNickInAllTabs(String userPhone, String newNick) {
+      Span badge = new Span();
+      //chat.setUnreadBadge(badge);
+      badge.getElement().getThemeList().add("badge small contrast");
+      //tab.add(new Span("#" + chat.getName() + "(" + chat.getPhone() + ")"), badge);
+      //tab.add(badge); // se realiza desde la clase ChatTab
+
       tabs.getChildren().forEach(component -> {
          if (component instanceof ChatTab) {
             ChatTab tab = (ChatTab) component;
             //String currentNick = tab.getNickUser();
             if (userPhone.equals(tab.getChatInfo().getPhone())) {
                tab.setNickUser(newNick);
+               tab.getChatInfo().setUnreadBadge(badge); /////////////////
                tab.updateTabContent();
+
+               tab.add(badge);
             }
          }
       });
@@ -488,13 +490,12 @@ public class ChatView extends HorizontalLayout implements ServletContextListener
       for (UserEntity userObject : userList) {
          String phone = userObject.getPhone();
          String nickname = userObject.getNickname();
-         updateNickInAllTabs2(phone, nickname);
+         updateNickInAllTabs(phone, nickname);
       }
    }
 
    // Método para guardar el nickname del usuario en la base de datos
    private void saveUserNickname(String phone, String nickname) {
-      System.out.println("--llega al sistema de grabar el NICK!!!!!!!!!!!!!" + phone + " | " + nickname);
       UserEntity userObject = new UserEntity();
       userObject.setPhone(phone);
       userObject.setNickname(nickname);

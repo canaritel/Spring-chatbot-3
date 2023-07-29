@@ -52,7 +52,6 @@ public class ChatTab extends Tab implements Comparable<ChatTab> {
 //      this.nickUser = nickUser;
 //      updateTabContent(); //////////////
 //   }
-
    private void showEditDialog() {
       Dialog editDialog = new Dialog();
       editDialog.setCloseOnEsc(true);
