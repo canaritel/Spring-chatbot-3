@@ -1,4 +1,4 @@
-package es.televoip.application.views.join;
+package es.televoip.application.views.login;
 
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.UI;
@@ -14,12 +14,12 @@ import com.vaadin.flow.server.VaadinSession;
 import es.televoip.application.views.MainLayout;
 import es.televoip.application.views.chat.ChatView;
 
-@Route(value = "join", layout = MainLayout.class)
+@Route(value = "login", layout = MainLayout.class)
 @RouteAlias(value = "", layout = MainLayout.class)
 @PageTitle("Vaadin AI Chat")
-public class JoinView extends VerticalLayout {
+public class LoginView extends VerticalLayout {
 
-   public JoinView() {
+   public LoginView() {
       addClassName(getClass().getSimpleName());
 
       H1 title = new H1("AI Chat");

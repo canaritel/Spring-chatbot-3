@@ -43,9 +43,10 @@ public class ChatService {
    public List<ChatEntity> searchBySender(String sender) {
       return chatRepository.findBySender(sender);
    }
-   
+
    public List<ChatEntity> searchByPhone(String phone) {
-      return chatRepository.findListByPhone(phone);
+      return chatRepository.getAllListByPhone(phone);
+      //return chatRepository.findAllByPhone(phone);
    }
 
 }

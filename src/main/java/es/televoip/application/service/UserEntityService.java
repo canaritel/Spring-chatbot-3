@@ -35,4 +35,13 @@ public class UserEntityService {
       return userRepository.findAll();
    }
 
+   public String getNickUserFromPhone(String phone) {
+      Optional<UserEntity> objectUser = userRepository.findByPhone(phone);
+      if (objectUser.isPresent()) {
+         return objectUser.get().getNickname();
+      } else {
+         return "";
+      }
+   }
+
 }

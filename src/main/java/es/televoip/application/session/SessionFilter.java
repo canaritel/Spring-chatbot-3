@@ -2,7 +2,7 @@ package es.televoip.application.session;
 
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.server.VaadinSession;
-import es.televoip.application.views.join.JoinView;
+import es.televoip.application.views.login.LoginView;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.FilterConfig;

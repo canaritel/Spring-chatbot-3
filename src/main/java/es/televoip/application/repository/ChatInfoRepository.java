@@ -9,5 +9,7 @@ import org.springframework.stereotype.Repository;
 public interface ChatInfoRepository extends JpaRepository<ChatInfo, Long> {
 
    Optional<ChatInfo> findByPhone(String phone);
+   
+   //@Modifying solo se usa en métodos personalizados que realizan operaciones de tipo Actualización o Eliminación!!!!
 
 }

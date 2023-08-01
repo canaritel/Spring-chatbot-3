@@ -49,7 +49,7 @@ vaadin-message[theme~="chat-view-bubble-bot"]::part(name)::after{
 }
 
 vaadin-message[theme~="chat-view-bubble-bot"] > vaadin-avatar{
-    border-radius: 5px;
+    border-radius: 17px;
     box-shadow: 0 0 6px #B2B2B2;
 }
 

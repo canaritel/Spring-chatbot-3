@@ -13,8 +13,12 @@ public interface ChatRepository extends JpaRepository<ChatEntity, Long> {
    List<ChatEntity> findBySender(String sender);
 
    @Query("SELECT c FROM ChatEntity c WHERE c.phone = :phone")
-   List<ChatEntity> findListByPhone(String phone);
+   List<ChatEntity> getAllListByPhone(String phone);
+
+   List<ChatEntity> findAllByPhone(String phone);
 
    Optional<ChatEntity> findByPhone(String phone);
+   
+   //@Modifying solo se usa en métodos personalizados que realizan operaciones de tipo Actualización o Eliminación!!!!
 
 }

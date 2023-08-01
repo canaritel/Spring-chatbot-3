@@ -1,10 +1,6 @@
 package es.televoip.application.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import java.time.Instant;
+import com.vaadin.flow.server.StreamResource;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,22 +10,30 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor  // genera un constructor sin parámetros
 @AllArgsConstructor  // genera un constructor con un parámetro para cada campo en su clase
 @Builder  // se utiliza en clases, constructores y métodos para proporcionarle API de compilador complejas
-@Entity
-public class ChatEntity {
+//@Entity
+public class OperatorEntity {
 
-   @Id
-   @GeneratedValue(strategy = GenerationType.IDENTITY)
-   private Long id;
+//   @Id
+//   @GeneratedValue(strategy = GenerationType.IDENTITY)
+//   private Long id;
+   //@Column(unique = true, nullable = false)
+   private String nickSession;
 
-   private String phone;
+   //@Column(nullable = true)
+   private String stringResource;
 
-   private String text;
-
-   private Instant timestamp;
-
-   private String sender; // nombre del usuario
-
-   private String receiver; // nombre del operador
+   private StreamResource image;
 
    // Getters y setters (generados automáticamente por @Data)
+   public void setImage(String streamResource) {
+      this.image = new StreamResource("myimage.png",
+             () -> getClass().getResourceAsStream(streamResource));
+   }
+
+   public StreamResource getImage() {
+      return image;
+   }
+   
+  
+
 }

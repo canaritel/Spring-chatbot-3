@@ -1,7 +1,7 @@
 package es.televoip.application.views;
 
 import com.vaadin.flow.component.Component;
-import es.televoip.application.views.join.JoinView;
+import es.televoip.application.views.login.LoginView;
 import com.vaadin.flow.component.UI;
 import es.televoip.application.views.about.AboutView;
 import com.vaadin.flow.component.applayout.AppLayout;
@@ -59,7 +59,7 @@ public class MainLayout extends AppLayout {
    private SideNav createNavigation() {
       nav = new SideNav();
 
-      joinNavItem = new SideNavItem("Join", JoinView.class, LineAwesomeIcon.JAVA.create());
+      joinNavItem = new SideNavItem("Join", LoginView.class, LineAwesomeIcon.JAVA.create());
       SideNavItem chatNavItem = new SideNavItem("Chat2", ChatView.class, LineAwesomeIcon.BOOTSTRAP.create());
       SideNavItem aboutNavItem = new SideNavItem("About", AboutView.class, LineAwesomeIcon.FILE.create());
 
@@ -88,7 +88,7 @@ public class MainLayout extends AppLayout {
       // Si el atributo "nickname" es null lo enviamos a la vista JoinView.
       if (VaadinSession.getCurrent().getAttribute("nickname") == null) {
          System.out.println("No hay ninguna sesión activada");
-         UI.getCurrent().navigate(JoinView.class);
+         UI.getCurrent().navigate(LoginView.class);
          toggle.setVisible(false); // Comenzamos con la barra superior invisible
       } else {
          toggle.setVisible(true);

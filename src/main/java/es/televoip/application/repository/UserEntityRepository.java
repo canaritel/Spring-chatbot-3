@@ -9,5 +9,7 @@ import org.springframework.stereotype.Repository;
 public interface UserEntityRepository extends JpaRepository<UserEntity, Long> {
 
    Optional<UserEntity> findByPhone(String phone);
+   
+   //@Modifying solo se usa en métodos personalizados que realizan operaciones de tipo Actualización o Eliminación!!!!
 
 }
