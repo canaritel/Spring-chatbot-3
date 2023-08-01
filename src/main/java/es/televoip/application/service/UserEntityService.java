@@ -15,18 +15,19 @@ public class UserEntityService {
    @Autowired
    private UserEntityRepository userRepository;
 
-   public void updateUserNick(UserEntity userNickname) {
-      String phone = userNickname.getPhone();
-      String nickname = userNickname.getNickname();
+   public void updateUserNick(String phone, String nick) {
+//      String phone = userNickname.getPhone();
+//      String nickname = userNickname.getNickname();
       Optional<UserEntity> objectUserOptional = userRepository.findByPhone(phone);
+
       if (objectUserOptional.isPresent()) {
          UserEntity objectUser = objectUserOptional.get();
-         objectUser.setNickname(nickname);
+         objectUser.setNickname(nick);
          userRepository.save(objectUser);
       } else {
          UserEntity newUser = new UserEntity();
          newUser.setPhone(phone);
-         newUser.setNickname(nickname);
+         newUser.setNickname(nick);
          userRepository.save(newUser);
       }
    }

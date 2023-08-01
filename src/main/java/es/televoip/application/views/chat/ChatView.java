@@ -4,6 +4,7 @@ import es.televoip.application.views.MainLayout;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.UIDetachedException;
 import com.vaadin.flow.component.html.Aside;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
@@ -24,7 +25,6 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.VaadinSession;
 import com.vaadin.flow.shared.Registration;
-import com.vaadin.flow.shared.communication.PushMode;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import es.televoip.application.Application;
 import es.televoip.application.broadcast.Broadcaster;
@@ -37,7 +37,6 @@ import es.televoip.application.model.OperatorEntity;
 import es.televoip.application.model.UserEntity;
 import es.televoip.application.service.ChatService;
 import es.televoip.application.service.UserEntityService;
-import es.televoip.application.views.login.LoginView;
 import jakarta.annotation.PostConstruct;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -46,20 +45,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.springframework.beans.factory.annotation.Autowired;
 
 @PageTitle("Chat2")
 @Route(value = "chat2", layout = MainLayout.class)
 public class ChatView extends HorizontalLayout {//implements ServletContextListener {
 
-   @Autowired
-   private ServiceListener serviceListener;
-
    protected Registration broadcasterRegistration; // Recibir transmisiones Broadcaster
    private final ChatService chatService;  // Agrega el servicio para la entidad ChatEntity
    private final UserEntityService userService; // Agrega el servicio para la entidad UserNickname
-   private final UI ui;
+   private final ServiceListener serviceListener; // Agrega el servicio para la gestión de sesiones UI
+   private UI ui;
    private final MessageList messageGlobalList;
+   private MessageInput input;
    private final Map<String, MessageList> chatsMap = new HashMap<>();
    private Tabs tabs;
    private Integer contador = 0;
@@ -67,23 +64,25 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
    private ChatTab selectedTab; // Mantener el tab seleccionado actualmente
    private ChatList chatList;
    private List<ChatInfo> allChats;
-   private static Notification notification; // declaramos static para que solo haya 1 aviso en todas las UI
    private Notification notificationShown = new Notification();
    private boolean isNotificationShown = false;
    // Todas las "instancias/sesiones" de ChatView compartirán la misma variable textChat 
    // y podrán acceder a la última versión del mensaje enviado.
    private static String textChat = ""; // "static" sino solo se actualizaría en la instancia específica donde se envió el mensaje.
+   private static Notification notification; // declaramos static para que solo haya 1 aviso en todas las UI
 
    @PostConstruct  //  Se ejecuta después de que se haya creado el bean de la vista y todas sus dependencias se hayan inyectado. 
    private void init() {
       loadUserNicknames(); // Método para cargar los nicknames de los usuarios
    }
 
-   public ChatView(ChatService chatService, UserEntityService userService) {
+   public ChatView(ChatService chatService, UserEntityService userService, ServiceListener serviceListener, UI ui) {
       this.chatService = chatService;
       this.userService = userService;
+      this.serviceListener = serviceListener;
       this.ui = UI.getCurrent();
-      ui.getPushConfiguration().setPushMode(PushMode.AUTOMATIC);
+      //this.ui = MainLayout.get().getUI().get();
+      //ui.getPushConfiguration().setPushMode(PushMode.AUTOMATIC);
 
       addClassNames("chat-view",
              LumoUtility.Width.FULL,
@@ -103,14 +102,13 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
 
       //********************** CONTROL DE ERROR POR SESIÓN VACÍA ********************************
       // Verificar si el atributo "nickname" está presente en la sesión
-      if (VaadinSession.getCurrent().getAttribute("nickname") == null) {
-         // Si no hay un "nickname" en la sesión, redirige a una página de inicio de sesión
-         // o muestra un mensaje de error indicando que la sesión ha caducado.
-         UI.getCurrent().navigate(LoginView.class);
-         //UI.getCurrent().getPage().executeJs("window.location.href = '/join';");
-      }
+      // if (VaadinSession.getCurrent().getAttribute("nickname") == null) {
+      // Si no hay un "nickname" en la sesión, redirige a una página de inicio de sesión
+      // o muestra un mensaje de error indicando que la sesión ha caducado.
+      //UI.getCurrent().navigate(LoginView.class);
+      //UI.getCurrent().getPage().executeJs("window.location.href = '/join';");
+      //}
       //*****************************************************************************************
-
       chatList = createChatList();
       allChats = chatList.getAllChats();
 
@@ -135,9 +133,10 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
             selectedChat = selectedTab.getChatInfo();
             selectedChat.resetUnread(); // ponmeos a 0 los mensajes pendientes de leer
             notificationShown.close();  // cerramos el Dialog de información
-            Application.selectedChat = selectedChat; // guardamos el Chat seleccionado
 
+            Application.selectedChat = selectedChat; // guardamos el Chat seleccionado
             loadChats(); // cargamos los Chats de la BD
+            input.setVisible(isNotificationShown); // hacemos visible caja de inputText y button Send
 
             tabs.getChildren().forEach(component -> { // Itera sobre los componentes hijos para acceder a cada objeto Tab
                // La palabra 'instanceof' es un operador que verifica si el objeto en cuestión es de un cierto tipo,
@@ -221,8 +220,7 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
       channels.addClassNames(LumoUtility.Flex.GROW,
              LumoUtility.Margin.NONE);
 
-      MessageInput input = createMessageInput();
-
+      //input = createMessageInput();
       header.add(channels);
       side.add(header, tabs);
 
@@ -237,6 +235,7 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
       return chatContainer;
    }
 
+   /*
    private MessageInput createMessageInput() {
       MessageInput input = new MessageInput();
       input.setWidthFull();
@@ -303,60 +302,124 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
 
       return input;
    }
+    */
+   private MessageInput createMessageInput() {
+      input = new MessageInput();
+      input.setWidthFull();
+
+      // if (isNotificationShown){
+      input.setVisible(isNotificationShown);
+      // }
+
+      input.addSubmitListener(userMessage -> {
+         String nickSession = VaadinSession.getCurrent().getAttribute("nickname").toString();
+         String phoneUser = selectedChat.getPhone();
+         String nameUser = selectedChat.getName();
+         textChat = userMessage.getValue();
+
+         // Crear el mensaje del remitente
+         MessageListItem senderMessage = createOperatorMessageListItem(textChat, nickSession, nameUser);
+         saveChatMessage(phoneUser, nickSession, nameUser, textChat); // Guardar el mensaje del remitente
+
+         // Crear el mensaje de la respuesta (bot)
+         contador++;
+         String nickUser = userService.getNickUserFromPhone(phoneUser);
+         String answer = textChat + " | ..respuesta" + contador;
+         MessageListItem botMessage = createUserMessageListItem(answer, nickSession, nickUser, nameUser);
+         saveChatMessage(phoneUser, nameUser, null, answer); // Guardar el mensaje de la respuesta (bot)
+
+         // Actualizar las listas de mensajes
+         MessageList messageList = chatsMap.get(selectedChat.getPhone());
+         List<MessageListItem> items = new ArrayList<>(messageList.getItems());
+         items.add(senderMessage);
+         items.add(botMessage);
+         messageList.setItems(items);
+         messageGlobalList.setItems(items);
+
+         Application.selectedChat = selectedChat; // cuando creo un mensaje se guarda el chat de quien lo hizo
+
+         // ***** ENVIAMOS EL BROADCASTER DE MENSAJES *****
+         //ui.access(() -> { /////////////////////////////////////////////////////////////
+         Broadcaster.broadcast(items);
+         //});
+         //************************************************
+      });
+
+      return input;
+   }
+
+   private MessageListItem createOperatorMessageListItem(String text, String sender, String receiver) {
+      MessageListItem messageListItem = new MessageListItem(text, Instant.now(), receiver);
+      messageListItem.setUserAbbreviation(sender);
+      messageListItem.setUserImage(loadAvatarNickSession(sender));
+      messageListItem.setUserName(sender);
+      messageListItem.addThemeNames("chat-view-bubble-bot");
+      return messageListItem;
+   }
+
+   private MessageListItem createUserMessageListItem(String text, String sender, String nickUser, String receiver) {
+      MessageListItem botMessageListItem = new MessageListItem(text, Instant.now(), sender);
+      botMessageListItem.setUserColorIndex(2);
+      botMessageListItem.setUserAbbreviation(receiver);
+      botMessageListItem.setUserName(nickUser + " - " + receiver + " - " + selectedChat.getPhone());
+      botMessageListItem.addThemeNames("chat-view-bubble");
+      return botMessageListItem;
+   }
+
+   private void saveChatMessage(String phone, String sender, String receiver, String text) {
+      ChatEntity chatEntity = ChatEntity.builder()
+             .phone(phone)
+             .text(text)
+             .timestamp(Instant.now())
+             .sender(sender)
+             .receiver(receiver)
+             .build();
+      chatService.saveChat(chatEntity);
+   }
 
    private String updateNickSender() {
       System.out.println("El sender es " + selectedTab.getNickUser());
       return selectedTab.getNickUser();
    }
 
-   public void loadNickInAllTabs(String newNick, String userPhone) {
-      tabs.getChildren().forEach(component -> {
-         if (component instanceof ChatTab) {
-            ChatTab tab = (ChatTab) component;
-            if (userPhone.equals(tab.getChatInfo().getPhone())) {
-               tab.setNickUser(newNick);
-               tab.updateTabContent();
-            }
-         }
-      });
-   }
-
+   // En su momento cargar X mensajes realizando una carga Lazy y paginación por scroll
    private void loadChats() {
-      // Procedemos a cargar de la BD los mensajes por el Teléfono del usuario
-      List<ChatEntity> chatEntities = chatService.searchByPhone(selectedChat.getPhone());
-      List<MessageListItem> newMessages = new ArrayList<>();
+      if (selectedChat != null) {
+         // Procedemos a cargar de la BD los mensajes por el Teléfono del usuario
+         List<ChatEntity> chatEntities = chatService.searchByPhone(selectedChat.getPhone());
+         List<MessageListItem> newMessages = new ArrayList<>();
 
-      for (ChatEntity objectChatEntity : chatEntities) {
-         String objectPhone = objectChatEntity.getPhone();
-         String objectSender = objectChatEntity.getSender();
-         Instant objectTime = objectChatEntity.getTimestamp();
-         String objectText = objectChatEntity.getText();
-         String objectReceiver = objectChatEntity.getReceiver();
-         String nickUser = userService.getNickUserFromPhone(objectPhone);
-         String objectUser = selectedChat.getName();
+         for (ChatEntity objectChatEntity : chatEntities) {
+            String objectPhone = objectChatEntity.getPhone();
+            String objectSender = objectChatEntity.getSender();
+            Instant objectTime = objectChatEntity.getTimestamp();
+            String objectText = objectChatEntity.getText();
+            String objectReceiver = objectChatEntity.getReceiver();
+            String nickUser = userService.getNickUserFromPhone(objectPhone);
+            String objectUser = selectedChat.getName();
 
-         MessageListItem newMessage = new MessageListItem();
-         //newMessage.setUserName(objectSender);
-         newMessage.setText(objectText);
-         newMessage.setTime(objectTime);
+            MessageListItem newMessage = new MessageListItem();
+            //newMessage.setUserName(objectSender);
+            newMessage.setText(objectText);
+            newMessage.setTime(objectTime);
 
-         if (objectReceiver == null) {
-            newMessage.addThemeNames("chat-view-bubble");
-            newMessage.setUserColorIndex(2);
-            newMessage.setUserAbbreviation(objectSender);
-            newMessage.setUserName(nickUser + " - " + objectUser + " - " + objectPhone);
-         } else {
-            newMessage.addThemeNames("chat-view-bubble-bot");
-            newMessage.setUserColorIndex(2);
-            newMessage.setUserAbbreviation(objectSender);
-            newMessage.setUserImage(loadAvatarNickSession(objectSender));
-            newMessage.setUserName(objectSender);
+            if (objectReceiver == null) {
+               newMessage.addThemeNames("chat-view-bubble");
+               newMessage.setUserColorIndex(2);
+               newMessage.setUserAbbreviation(objectSender);
+               newMessage.setUserName(nickUser + " - " + objectUser + " - " + objectPhone);
+            } else {
+               newMessage.addThemeNames("chat-view-bubble-bot");
+               newMessage.setUserColorIndex(2);
+               newMessage.setUserAbbreviation(objectSender);
+               newMessage.setUserImage(loadAvatarNickSession(objectSender));
+               newMessage.setUserName(objectSender);
+            }
+
+            newMessages.add(newMessage);
          }
-
-         newMessages.add(newMessage);
+         sendLoadChatToScreen(newMessages);
       }
-
-      sendLoadChatToScreen(newMessages);
    }
 
    private void sendLoadChatToScreen(List<MessageListItem> newMessages) {
@@ -372,12 +435,11 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
    public void updateNickInAllTabs(String userPhone, String newNick) {
       Span badge = new Span();
       badge.getElement().getThemeList().add("badge small contrast");
-
       tabs.getChildren().forEach(component -> {
          if (component instanceof ChatTab) {
             ChatTab tab = (ChatTab) component;
 
-            if (userPhone.equals(tab.getChatInfo().getPhone())) {
+            if (userPhone.equals(tab.getChatInfo().getPhone()) && tab.getChatInfo().getPhone() != null) {
                tab.setNickUser(newNick); // seteamos el nuevo nickname
                tab.getChatInfo().setUnreadBadge(badge); // añadimos el nº de chat no leidos
                tab.updateTabContent();
@@ -385,9 +447,18 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
             }
          }
       });
-      saveUserNickname(userPhone, newNick); // Guardar el nickname en la base de datos
+      // Guardar el nickname en la base de datos
+      //saveUserNickname(userPhone, newNick);
+      userService.updateUserNick(userPhone, newNick);
    }
 
+   // Método para guardar el nickname del usuario en la base de datos
+//   private void saveUserNickname(String phone, String nickname) {
+//      UserEntity userObject = new UserEntity();
+//      userObject.setPhone(phone);
+//      userObject.setNickname(nickname);
+//      userService.updateUserNick(userObject);
+//   }
    // Método para cargar los nicknames de los usuarios desde la base de datos y actualizar los tabs
    private void loadUserNicknames() {
       List<UserEntity> userList = userService.searchAll();
@@ -396,14 +467,6 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
          String nickname = userObject.getNickname();
          updateNickInAllTabs(phone, nickname);
       }
-   }
-
-   // Método para guardar el nickname del usuario en la base de datos
-   private void saveUserNickname(String phone, String nickname) {
-      UserEntity userObject = new UserEntity();
-      userObject.setPhone(phone);
-      userObject.setNickname(nickname);
-      userService.updateUserNick(userObject);
    }
 
    private String loadAvatarNickSession(String nickSession) {
@@ -473,43 +536,55 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
 
       // **************** RECIBIMOS BROADCASTER DE MENSAJES ******************
       broadcasterRegistration = Broadcaster.register(newMessage -> {
-         if (ui != null) {
-            ChatInfo currentSelectedChat = selectedChat; // Obtenemos el chat seleccionado en la sesión activa
-            ChatInfo applicationSelectedChat = Application.selectedChat; // Obtenemos el chat seleccionado del que envía
+         try {
+            if (ui != null) {
+               ChatInfo currentSelectedChat = selectedChat; // Obtenemos el chat seleccionado en la sesión activa
+               ChatInfo applicationSelectedChat = Application.selectedChat; // Obtenemos el chat seleccionado del que envía
 
-            ui.access(() -> {
-               // Comparamos los phones de los chats seleccionados para NOTIFICAR solo en los mismos Tab-Chat
-               if (currentSelectedChat != null && applicationSelectedChat != null
-                      && currentSelectedChat.getPhone().equals(applicationSelectedChat.getPhone())) {
-                  messageGlobalList.setItems(newMessage); // Si los chats seleccionados son iguales actualizamos los mensajes
+               ui.access(() -> {
+                  // Comparamos los phones de los chats seleccionados para NOTIFICAR solo en los mismos Tab-Chat
+                  if (currentSelectedChat != null && applicationSelectedChat != null
+                         && currentSelectedChat.getPhone().equals(applicationSelectedChat.getPhone())) {
+                     messageGlobalList.setItems(newMessage); // Si los chats seleccionados son iguales actualizamos los mensajes
 
-               } else {
-                  // Incrementar contador de mensajes no leídos
-                  List<ChatInfo> allChats = chatList.getAllChats();
-                  for (ChatInfo chat : allChats) {
-                     if (chat.getPhone().equals(applicationSelectedChat.getPhone())) {
-                        chat.incrementUnread();  // incrementamos en 1 el chat no leido 
+                  } else {
+                     // Incrementar contador de mensajes no leídos
+                     List<ChatInfo> allChats = chatList.getAllChats();
+                     for (ChatInfo chat : allChats) {
+                        if (chat.getPhone().equals(applicationSelectedChat.getPhone())) {
+                           chat.incrementUnread();  // incrementamos en 1 el chat no leido 
+                        }
                      }
+                     sortTabsByUnread(); // Ordenamos los tabs por cantidad de mensajes no leídos
                   }
-                  sortTabsByUnread(); // Ordenamos los tabs por cantidad de mensajes no leídos
-               }
 
-               // Notificamos en todas las sesiones
-               String firstTenCharacters = textChat.substring(0, Math.min(textChat.length(), 20));
-               String text = applicationSelectedChat.getName() + ": " + firstTenCharacters + "...";
-               notification = Notification.show(text, 3000, Notification.Position.TOP_CENTER);
-               notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                  // Notificamos en todas las sesiones
+                  String firstTenCharacters = textChat.substring(0, Math.min(textChat.length(), 20));
+                  String text = applicationSelectedChat.getName() + ": " + firstTenCharacters + "...";
+                  notification = Notification.show(text, 3000, Notification.Position.TOP_CENTER);
+                  notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+               });
             }
-            );
+         } catch (UIDetachedException e) {
+            // Solucionamos el error que sucede al refrescar de forma manual el navegador con la sesión iniciada
+            System.err.println("Error en la UI al duplicarse" + e.getMessage());
+            ui.close();
          }
       });
 
       // ************** RECIMOS BROADCASTER PARA NICKNAME *******************
-      broadcasterRegistration = Broadcaster.registerNickChange(chageData -> {
-         if (ui != null) {
-            ui.access(() -> {
-               updateNickInAllTabs(chageData.getUserPhone(), chageData.getNewNick()); // actualizamos el nickname
-            });
+      broadcasterRegistration = Broadcaster.registerNickChange(changeData -> {
+         try {
+            if (ui != null) {
+               ui.access(() -> {
+                  updateNickInAllTabs(changeData.getUserPhone(), changeData.getNewNick()); // actualizamos el nickname
+                  loadChats();
+               });
+            }
+         } catch (UIDetachedException e) {
+            // Solucionamos el error que sucede al refrescar de forma manual el navegador con la sesión iniciada
+            System.err.println("Error en la UI al duplicarse" + e.getMessage());
+            ui.close();
          }
       });
       // ********************** FIN BROADCASTERs ****************************
@@ -524,6 +599,9 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
       broadcasterRegistration.remove();
       broadcasterRegistration = null;
       notificationShown.close();
+      ui.close(); // para que no duplique los avisos de Noificaciones al salir y volver acceder
+      // Crear una variable que permita solo 1 UI por nickSession, y cada vez se acceda se lea. OJO no es obligatorio
+
    }
 
 }
