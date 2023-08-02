@@ -61,7 +61,7 @@ public class ChatTab extends Tab implements Comparable<ChatTab> {
 
       // Creamos el botón para guardar el nick
       Button saveButton = new Button("Guardar", event -> {
-         String newNick = nickInput.getValue();
+         String newNick = nickInput.getValue().strip();
          setNickUser(newNick);
          editDialog.close();
 

@@ -1,5 +1,7 @@
 package es.televoip.application.views.about;
 
+import com.vaadin.flow.component.DetachEvent;
+import com.vaadin.flow.component.UI;
 import es.televoip.application.views.MainLayout;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Image;
@@ -13,22 +15,31 @@ import com.vaadin.flow.theme.lumo.LumoUtility.Margin;
 @Route(value = "about", layout = MainLayout.class)
 public class AboutView extends VerticalLayout {
 
-    public AboutView() {
-        setSpacing(false);
+   private UI ui;
 
-        Image img = new Image("images/empty-plant.png", "placeholder plant");
-        img.setWidth("200px");
-        add(img);
+   public AboutView() {
+      this.ui = UI.getCurrent();
 
-        H2 header = new H2("This place intentionally left empty");
-        header.addClassNames(Margin.Top.XLARGE, Margin.Bottom.MEDIUM);
-        add(header);
-        add(new Paragraph("It’s a place where you can grow your own UI 🤗"));
+      setSpacing(false);
 
-        setSizeFull();
-        setJustifyContentMode(JustifyContentMode.CENTER);
-        setDefaultHorizontalComponentAlignment(Alignment.CENTER);
-        getStyle().set("text-align", "center");
-    }
+      Image img = new Image("images/empty-plant.png", "placeholder plant");
+      img.setWidth("200px");
+      add(img);
+
+      H2 header = new H2("This place intentionally left empty");
+      header.addClassNames(Margin.Top.XLARGE, Margin.Bottom.MEDIUM);
+      add(header);
+      add(new Paragraph("It’s a place where you can grow your own UI 🤗"));
+
+      setSizeFull();
+      setJustifyContentMode(JustifyContentMode.CENTER);
+      setDefaultHorizontalComponentAlignment(Alignment.CENTER);
+      getStyle().set("text-align", "center");
+   }
+
+   @Override
+   protected void onDetach(DetachEvent detachEvent) {
+      //ui.removeFromParent();
+   }
 
 }

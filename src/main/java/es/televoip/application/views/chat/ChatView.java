@@ -22,9 +22,12 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.page.Page;
 import com.vaadin.flow.component.tabs.Tabs;
 import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.PreserveOnRefresh;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.VaadinSession;
+import com.vaadin.flow.server.WebBrowser;
 import com.vaadin.flow.shared.Registration;
+import com.vaadin.flow.spring.annotation.UIScope;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import es.televoip.application.Application;
 import es.televoip.application.broadcast.Broadcaster;
@@ -48,9 +51,12 @@ import java.util.Set;
 
 @PageTitle("Chat2")
 @Route(value = "chat2", layout = MainLayout.class)
+@PreserveOnRefresh // garantizas que si ocurre un evento de actualización en la página, la instancia actual se mantendrá
+@UIScope // Asegura que cada instancia de ChatView esté asociada a una sesión específica
 public class ChatView extends HorizontalLayout {//implements ServletContextListener {
 
-   protected Registration broadcasterRegistration; // Recibir transmisiones Broadcaster
+   private Registration broadcasterRegistration; // Recibir transmisiones Broadcaster, sin static para evitar duplicados en Notific.
+   private Registration broadcasterNickRegistration; // Recibir transmisiones Broadcaster
    private final ChatService chatService;  // Agrega el servicio para la entidad ChatEntity
    private final UserEntityService userService; // Agrega el servicio para la entidad UserNickname
    private final ServiceListener serviceListener; // Agrega el servicio para la gestión de sesiones UI
@@ -69,21 +75,22 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
    // Todas las "instancias/sesiones" de ChatView compartirán la misma variable textChat 
    // y podrán acceder a la última versión del mensaje enviado.
    private static String textChat = ""; // "static" sino solo se actualizaría en la instancia específica donde se envió el mensaje.
-   private static Notification notification; // declaramos static para que solo haya 1 aviso en todas las UI
+   private Notification notification = new Notification(); // notifica los chat que van llegando en la parte superior
 
    @PostConstruct  //  Se ejecuta después de que se haya creado el bean de la vista y todas sus dependencias se hayan inyectado. 
    private void init() {
       loadUserNicknames(); // Método para cargar los nicknames de los usuarios
+      this.initializeRedirect();
    }
 
-   public ChatView(ChatService chatService, UserEntityService userService, ServiceListener serviceListener, UI ui) {
+   public ChatView(ChatService chatService, UserEntityService userService, ServiceListener serviceListener) {
       this.chatService = chatService;
       this.userService = userService;
       this.serviceListener = serviceListener;
-      this.ui = UI.getCurrent();
-      //this.ui = MainLayout.get().getUI().get();
-      //ui.getPushConfiguration().setPushMode(PushMode.AUTOMATIC);
 
+      this.ui = UI.getCurrent();
+
+      //ui.getPushConfiguration().setPushMode(PushMode.AUTOMATIC);
       addClassNames("chat-view",
              LumoUtility.Width.FULL,
              LumoUtility.Display.FLEX,
@@ -100,15 +107,6 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
              LumoUtility.Flex.SHRINK,
              LumoUtility.Overflow.HIDDEN);
 
-      //********************** CONTROL DE ERROR POR SESIÓN VACÍA ********************************
-      // Verificar si el atributo "nickname" está presente en la sesión
-      // if (VaadinSession.getCurrent().getAttribute("nickname") == null) {
-      // Si no hay un "nickname" en la sesión, redirige a una página de inicio de sesión
-      // o muestra un mensaje de error indicando que la sesión ha caducado.
-      //UI.getCurrent().navigate(LoginView.class);
-      //UI.getCurrent().getPage().executeJs("window.location.href = '/join';");
-      //}
-      //*****************************************************************************************
       chatList = createChatList();
       allChats = chatList.getAllChats();
 
@@ -235,81 +233,10 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
       return chatContainer;
    }
 
-   /*
-   private MessageInput createMessageInput() {
-      MessageInput input = new MessageInput();
-      input.setWidthFull();
-
-      input.addSubmitListener(userMessage -> {
-         String nickSession = VaadinSession.getCurrent().getAttribute("nickname").toString();
-         String phoneUser = selectedChat.getPhone();
-         String nameUser = selectedChat.getName();
-         textChat = userMessage.getValue();
-
-         MessageListItem newMessage = new MessageListItem(textChat, Instant.now(), nameUser);
-         //newMessage.setUserColorIndex(1);
-         newMessage.setUserAbbreviation(nickSession);
-         newMessage.setUserImage(loadAvatarNickSession(nickSession));
-         newMessage.setUserName(nickSession);
-         newMessage.addThemeNames("chat-view-bubble-bot");
-
-         String userChat = updateNickSender(); // Actualizamos el nombre del Nick antes de grabar
-         ChatEntity chatSender = ChatEntity.builder()
-                .phone(phoneUser)
-                .text(textChat)
-                .timestamp(newMessage.getTime())
-                .sender(nickSession)
-                .receiver(nameUser)
-                .build();
-         chatService.saveChat(chatSender);  // ***** GRABAMOS LOS MENSAJES DEl EMISOR/REMITENTE *****
-
-         MessageList messageList = chatsMap.get(selectedChat.getPhone());
-         List<MessageListItem> items = new ArrayList<>(messageList.getItems());
-         items.add(newMessage);
-         messageList.setItems(items);
-         messageGlobalList.setItems(items);
-
-         contador++; // añadimos un incremento a un identificador numérico de la respuesta
-         String nickUser = userService.getNickUserFromPhone(phoneUser);
-         String answer = textChat + " | ..respuesta" + contador;
-         MessageListItem botMessage = new MessageListItem(answer, Instant.now(), nickSession);
-         //botMessage.setUserAbbreviation(nameUser);
-         botMessage.setUserColorIndex(2);
-         botMessage.setUserAbbreviation(nameUser);
-         botMessage.setUserName(nickUser + " - " + nameUser + " - " + phoneUser);
-         botMessage.addThemeNames("chat-view-bubble");
-
-         userChat = updateNickSender(); // Actualizamos el nombre del Nick antes de grabar
-         ChatEntity chatReceiver = ChatEntity.builder()
-                .phone(phoneUser)
-                .text(botMessage.getText())
-                .timestamp(botMessage.getTime())
-                .sender(nameUser)
-                //.receiver(botMessage.getUserName())
-                //.nickSender(userChat)
-                .build();
-         chatService.saveChat(chatReceiver); // ***** GRABAMOS MENSAJES DE LA RESPUESTA *****
-
-         Application.selectedChat = selectedChat; // cuando creo un mensaje se guarda el chat de quien lo hizo
-         items.add(botMessage);
-         messageList.setItems(items);
-         messageGlobalList.setItems(items);
-
-         // ***** ENVIAMOS EL BROADCASTER DE MENSAJES *****
-         Broadcaster.broadcast(items);
-         //************************************************
-      });
-
-      return input;
-   }
-    */
    private MessageInput createMessageInput() {
       input = new MessageInput();
       input.setWidthFull();
-
-      // if (isNotificationShown){
       input.setVisible(isNotificationShown);
-      // }
 
       input.addSubmitListener(userMessage -> {
          String nickSession = VaadinSession.getCurrent().getAttribute("nickname").toString();
@@ -339,13 +266,12 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
          Application.selectedChat = selectedChat; // cuando creo un mensaje se guarda el chat de quien lo hizo
 
          // ***** ENVIAMOS EL BROADCASTER DE MENSAJES *****
-         //ui.access(() -> { /////////////////////////////////////////////////////////////
          Broadcaster.broadcast(items);
-         //});
          //************************************************
       });
 
       return input;
+
    }
 
    private MessageListItem createOperatorMessageListItem(String text, String sender, String receiver) {
@@ -377,11 +303,10 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
       chatService.saveChat(chatEntity);
    }
 
-   private String updateNickSender() {
-      System.out.println("El sender es " + selectedTab.getNickUser());
-      return selectedTab.getNickUser();
-   }
-
+//   private String updateNickSender() {
+//      System.out.println("El sender es " + selectedTab.getNickUser());
+//      return selectedTab.getNickUser();
+//   }
    // En su momento cargar X mensajes realizando una carga Lazy y paginación por scroll
    private void loadChats() {
       if (selectedChat != null) {
@@ -399,7 +324,6 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
             String objectUser = selectedChat.getName();
 
             MessageListItem newMessage = new MessageListItem();
-            //newMessage.setUserName(objectSender);
             newMessage.setText(objectText);
             newMessage.setTime(objectTime);
 
@@ -448,17 +372,9 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
          }
       });
       // Guardar el nickname en la base de datos
-      //saveUserNickname(userPhone, newNick);
       userService.updateUserNick(userPhone, newNick);
    }
 
-   // Método para guardar el nickname del usuario en la base de datos
-//   private void saveUserNickname(String phone, String nickname) {
-//      UserEntity userObject = new UserEntity();
-//      userObject.setPhone(phone);
-//      userObject.setNickname(nickname);
-//      userService.updateUserNick(userObject);
-//   }
    // Método para cargar los nicknames de los usuarios desde la base de datos y actualizar los tabs
    private void loadUserNicknames() {
       List<UserEntity> userList = userService.searchAll();
@@ -494,6 +410,24 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
       }
    }
 
+   private void initializeRedirect() {
+      UI.getCurrent().getPage().retrieveExtendedClientDetails(details -> {
+         WebBrowser webBrowser = VaadinSession.getCurrent().getBrowser();
+         boolean isMobile = webBrowser != null && (webBrowser.isAndroid() || webBrowser.isIPhone()
+                || webBrowser.isWindowsPhone() || webBrowser.isWindows() || details.isIPad());
+
+         System.out.println("********** DETALLES DEL NAVEGADOR ***********");
+         System.out.println("WebBrowser " + webBrowser.getBrowserApplication());
+         System.out.println("WebBrowser Android: " + webBrowser.isAndroid());
+         System.out.println("WebBrowser Iphone: " + webBrowser.isIPhone());
+         System.out.println("WebBrowser Phone: " + webBrowser.isIPhone());
+         System.out.println("WebBrowser Windows: " + webBrowser.isWindows());
+         System.out.println("WebBrowser Mac: " + webBrowser.isMacOSX());
+         System.out.println("WebBrowser Linux: " + webBrowser.isLinux());
+         System.out.println("*********************************************");
+      });
+   }
+
    // El método 'onAttach' se ejecutará cada vez que se muestre la vista en la interfaz de usuario,
    // por lo que es un buen lugar para inicializar componentes, cargar datos o realizar otras 
    // acciones que deban ocurrir cuando la vista esté presente.
@@ -508,6 +442,7 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
          setMobile(details.getWindowInnerWidth() < 940);
       });
 
+      //if (ui.isAttached()) {
       if (!isNotificationShown && tabs.getSelectedTab() == null) {
          // Mostrar la notificación solo si no se ha mostrado antes y no hay un Tab seleccionado
          notificationShown.addThemeVariants(NotificationVariant.LUMO_WARNING);
@@ -538,10 +473,9 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
       broadcasterRegistration = Broadcaster.register(newMessage -> {
          try {
             if (ui != null) {
-               ChatInfo currentSelectedChat = selectedChat; // Obtenemos el chat seleccionado en la sesión activa
-               ChatInfo applicationSelectedChat = Application.selectedChat; // Obtenemos el chat seleccionado del que envía
-
                ui.access(() -> {
+                  ChatInfo currentSelectedChat = selectedChat; // Obtenemos el chat seleccionado en la sesión activa
+                  ChatInfo applicationSelectedChat = Application.selectedChat; // Obtenemos el chat seleccionado del que envía
                   // Comparamos los phones de los chats seleccionados para NOTIFICAR solo en los mismos Tab-Chat
                   if (currentSelectedChat != null && applicationSelectedChat != null
                          && currentSelectedChat.getPhone().equals(applicationSelectedChat.getPhone())) {
@@ -561,19 +495,25 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
                   // Notificamos en todas las sesiones
                   String firstTenCharacters = textChat.substring(0, Math.min(textChat.length(), 20));
                   String text = applicationSelectedChat.getName() + ": " + firstTenCharacters + "...";
-                  notification = Notification.show(text, 3000, Notification.Position.TOP_CENTER);
-                  notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+
+                  if (ui.isAttached()) {
+                     notification = Notification.show(text, 3000, Notification.Position.TOP_CENTER);
+                     notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                  }
+
+//                     System.out.println("UI: " + ui.getCsrfToken());
                });
+               System.out.println("UI: " + ui.getCsrfToken());
             }
          } catch (UIDetachedException e) {
             // Solucionamos el error que sucede al refrescar de forma manual el navegador con la sesión iniciada
             System.err.println("Error en la UI al duplicarse" + e.getMessage());
-            ui.close();
+            //ui.removeFromParent();
          }
       });
 
-      // ************** RECIMOS BROADCASTER PARA NICKNAME *******************
-      broadcasterRegistration = Broadcaster.registerNickChange(changeData -> {
+      // ************** RECIBIMOS BROADCASTER PARA NICKNAME *******************
+      broadcasterNickRegistration = Broadcaster.registerNickChange(changeData -> {
          try {
             if (ui != null) {
                ui.access(() -> {
@@ -583,25 +523,38 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
             }
          } catch (UIDetachedException e) {
             // Solucionamos el error que sucede al refrescar de forma manual el navegador con la sesión iniciada
-            System.err.println("Error en la UI al duplicarse" + e.getMessage());
-            ui.close();
+            System.err.println("Error en la UI nick al duplicarse" + e.getMessage());
+            // ui.removeFromParent();
          }
       });
-      // ********************** FIN BROADCASTERs ****************************
+      // ********************** FIN BROADCASTER *****************************
+
       Set<UI> activeUIs = serviceListener.getActiveUIs();
       System.out.println("Sesiones activas UI Listener: " + activeUIs.size());
       System.out.println("Sesión Nick añadido: " + VaadinSession.getCurrent().getAttribute("nickname").toString());
+      // }
    }
 
    //  El método 'onDetach' se invoca justo antes de que el componente se separe del UI, ideal para liberar recursos
    @Override
    protected void onDetach(DetachEvent detachEvent) {
-      broadcasterRegistration.remove();
-      broadcasterRegistration = null;
-      notificationShown.close();
-      ui.close(); // para que no duplique los avisos de Noificaciones al salir y volver acceder
-      // Crear una variable que permita solo 1 UI por nickSession, y cada vez se acceda se lea. OJO no es obligatorio
+      if (broadcasterRegistration != null) {
+         broadcasterRegistration.remove();
+         broadcasterRegistration = null;
+      }
 
+      if (broadcasterNickRegistration != null) {
+         broadcasterNickRegistration.remove();
+         broadcasterNickRegistration = null;
+      }
+
+      if (notificationShown != null) {
+         notificationShown.close();
+      }
+
+      if (notification != null) { //&& ui.isAttached()) {
+         notification.close();
+      }
    }
 
 }

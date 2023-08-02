@@ -7,9 +7,10 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Transient;
+import java.io.Serializable;
 
 @Entity
-public class ChatInfo {
+public class ChatInfo implements Serializable {
 
    @Id
    @GeneratedValue(strategy = GenerationType.IDENTITY)
