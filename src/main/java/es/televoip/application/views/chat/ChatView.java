@@ -504,6 +504,8 @@ public class ChatView extends HorizontalLayout implements HasUrlParameter<String
             System.err.println(e.getMessage()); // no llega aquí
          }
       });
+      
+      serviceListener.activeUIs();
 
       // ************** RECIBIMOS BROADCASTER PARA NICKNAME *******************
       broadcasterNickRegistration = Broadcaster.registerNickChange(changeData -> {
