@@ -16,7 +16,6 @@ import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.server.VaadinSession;
 import com.vaadin.flow.theme.lumo.LumoUtility;
-import es.televoip.application.views.chat.ChatView;
 import org.vaadin.lineawesome.LineAwesomeIcon;
 
 /**
@@ -28,6 +27,8 @@ public class MainLayout extends AppLayout {
    private DrawerToggle toggle;
    private SideNav nav;
    private SideNavItem joinNavItem;
+
+   private String tokenId;
 
    public MainLayout() {
       setPrimarySection(Section.DRAWER);
@@ -59,8 +60,11 @@ public class MainLayout extends AppLayout {
    private SideNav createNavigation() {
       nav = new SideNav();
 
+      tokenId = VaadinSession.getCurrent().getSession().getId();
+      String chatViewUrl = "chat2/" + tokenId; // Agrega el sessionId a la URL de ChatView
+
       joinNavItem = new SideNavItem("Join", LoginView.class, LineAwesomeIcon.JAVA.create());
-      SideNavItem chatNavItem = new SideNavItem("Chat2", ChatView.class, LineAwesomeIcon.BOOTSTRAP.create());
+      SideNavItem chatNavItem = new SideNavItem("Chat2", chatViewUrl, LineAwesomeIcon.BOOTSTRAP.create());
       SideNavItem aboutNavItem = new SideNavItem("About", AboutView.class, LineAwesomeIcon.FILE.create());
 
       nav.addItem(joinNavItem, chatNavItem, aboutNavItem);
@@ -85,6 +89,7 @@ public class MainLayout extends AppLayout {
    protected void afterNavigation() {
       super.afterNavigation();
       viewTitle.setText(getCurrentPageTitle());
+
       // Si el atributo "nickname" es null lo enviamos a la vista JoinView.
       if (VaadinSession.getCurrent().getAttribute("nickname") == null) {
          System.out.println("No hay ninguna sesión activada");

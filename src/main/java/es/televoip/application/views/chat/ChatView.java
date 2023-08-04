@@ -21,13 +21,14 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.page.Page;
 import com.vaadin.flow.component.tabs.Tabs;
+import com.vaadin.flow.router.BeforeEvent;
+import com.vaadin.flow.router.HasUrlParameter;
+import com.vaadin.flow.router.OptionalParameter;
 import com.vaadin.flow.router.PageTitle;
-import com.vaadin.flow.router.PreserveOnRefresh;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.VaadinSession;
 import com.vaadin.flow.server.WebBrowser;
 import com.vaadin.flow.shared.Registration;
-import com.vaadin.flow.spring.annotation.UIScope;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import es.televoip.application.Application;
 import es.televoip.application.broadcast.Broadcaster;
@@ -47,13 +48,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 @PageTitle("Chat2")
 @Route(value = "chat2", layout = MainLayout.class)
-@PreserveOnRefresh // garantizas que si ocurre un evento de actualización en la página, la instancia actual se mantendrá
-@UIScope // Asegura que cada instancia de ChatView esté asociada a una sesión específica
-public class ChatView extends HorizontalLayout {//implements ServletContextListener {
+//@PreserveOnRefresh // garantizas que si ocurre un evento de actualización en la página, la instancia actual se mantendrá
+//@UIScope // Asegura que cada instancia de ChatView esté asociada a una sesión específica
+public class ChatView extends HorizontalLayout implements HasUrlParameter<String> {
 
    private Registration broadcasterRegistration; // Recibir transmisiones Broadcaster, sin static para evitar duplicados en Notific.
    private Registration broadcasterNickRegistration; // Recibir transmisiones Broadcaster
@@ -76,11 +76,14 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
    // y podrán acceder a la última versión del mensaje enviado.
    private static String textChat = ""; // "static" sino solo se actualizaría en la instancia específica donde se envió el mensaje.
    private Notification notification = new Notification(); // notifica los chat que van llegando en la parte superior
+   String sessionId;
+   private String parameterValue;
 
    @PostConstruct  //  Se ejecuta después de que se haya creado el bean de la vista y todas sus dependencias se hayan inyectado. 
    private void init() {
       loadUserNicknames(); // Método para cargar los nicknames de los usuarios
-      this.initializeRedirect();
+      //this.initializeRedirect();
+
    }
 
    public ChatView(ChatService chatService, UserEntityService userService, ServiceListener serviceListener) {
@@ -303,10 +306,6 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
       chatService.saveChat(chatEntity);
    }
 
-//   private String updateNickSender() {
-//      System.out.println("El sender es " + selectedTab.getNickUser());
-//      return selectedTab.getNickUser();
-//   }
    // En su momento cargar X mensajes realizando una carga Lazy y paginación por scroll
    private void loadChats() {
       if (selectedChat != null) {
@@ -442,7 +441,6 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
          setMobile(details.getWindowInnerWidth() < 940);
       });
 
-      //if (ui.isAttached()) {
       if (!isNotificationShown && tabs.getSelectedTab() == null) {
          // Mostrar la notificación solo si no se ha mostrado antes y no hay un Tab seleccionado
          notificationShown.addThemeVariants(NotificationVariant.LUMO_WARNING);
@@ -500,15 +498,10 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
                      notification = Notification.show(text, 3000, Notification.Position.TOP_CENTER);
                      notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                   }
-
-//                     System.out.println("UI: " + ui.getCsrfToken());
                });
-               System.out.println("UI: " + ui.getCsrfToken());
             }
          } catch (UIDetachedException e) {
-            // Solucionamos el error que sucede al refrescar de forma manual el navegador con la sesión iniciada
-            System.err.println("Error en la UI al duplicarse" + e.getMessage());
-            //ui.removeFromParent();
+            System.err.println(e.getMessage()); // no llega aquí
          }
       });
 
@@ -522,21 +515,15 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
                });
             }
          } catch (UIDetachedException e) {
-            // Solucionamos el error que sucede al refrescar de forma manual el navegador con la sesión iniciada
-            System.err.println("Error en la UI nick al duplicarse" + e.getMessage());
-            // ui.removeFromParent();
+            System.err.println(e.getMessage()); // no llega aquí
          }
       });
       // ********************** FIN BROADCASTER *****************************
-
-      Set<UI> activeUIs = serviceListener.getActiveUIs();
-      System.out.println("Sesiones activas UI Listener: " + activeUIs.size());
-      System.out.println("Sesión Nick añadido: " + VaadinSession.getCurrent().getAttribute("nickname").toString());
-      // }
    }
 
    //  El método 'onDetach' se invoca justo antes de que el componente se separe del UI, ideal para liberar recursos
    @Override
+
    protected void onDetach(DetachEvent detachEvent) {
       if (broadcasterRegistration != null) {
          broadcasterRegistration.remove();
@@ -554,6 +541,19 @@ public class ChatView extends HorizontalLayout {//implements ServletContextListe
 
       if (notification != null) { //&& ui.isAttached()) {
          notification.close();
+      }
+
+   }
+
+   @Override
+   public void setParameter(BeforeEvent be, @OptionalParameter String parameter) {
+      this.parameterValue = parameter;
+      if (parameter != null) {
+         // Aquí obtienes el valor del parámetro y puedes hacer lo que necesites con él.
+         System.out.println("Valor del parámetro: " + parameter);
+         // Por ejemplo, guardar el valor del parámetro en una variable de clase para usarlo en otros métodos de la vista.
+      } else {
+         // Si el parámetro es nulo, puedes realizar alguna acción apropiada, como redirigir a una página de error, etc.
       }
    }
 

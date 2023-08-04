@@ -25,6 +25,7 @@ public class ServiceListener implements VaadinServiceInitListener {
                        .info("****************  A new UI has been initialized!");
                 UI ui = UI.getCurrent();
                 activeUIs.add(ui);
+                System.out.println("Sesiones activas UI Listener: " + activeUIs.size());
              });
    }
 
